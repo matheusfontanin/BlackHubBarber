@@ -9,6 +9,7 @@ export interface OnboardingData {
   city: string;
   state: string;
   instagram?: string;
+  whatsappInstanceName?: string;
   services: Array<{
     name: string;
     price: number;
@@ -41,6 +42,7 @@ export async function saveOnboardingData(data: OnboardingData) {
         state: data.state,
         instagram: data.instagram,
         business_hours: data.businessHours,
+        whatsapp_instance: data.whatsappInstanceName ?? null,
       })
       .select()
       .single();

@@ -115,7 +115,11 @@ export default function OnboardingPage() {
             )}
 
             {step === 5 && (
-              <WhatsAppStep onNext={nextStep} onBack={prevStep} />
+              <WhatsAppStep
+                phone={formData.phone}
+                onNext={nextStep}
+                onBack={prevStep}
+              />
             )}
 
             {step === 6 && (

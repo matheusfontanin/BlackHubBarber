@@ -1,58 +1,94 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Scissors, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Scissors, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
-export default function LoginPage() {
+export default function RegisterPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setDevMode } = useAuth();
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Dev Login Bypass
-    if (email === 'admin' && password === '1234') {
-      setDevMode(true);
-      navigate('/dashboard');
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      setLoading(false);
       return;
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+        },
       });
 
-      if (error) throw error;
-      navigate('/dashboard');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      
-      // Improved error messages in Portuguese
-      let message = 'Ocorreu um erro ao acessar sua conta. Tente novamente.';
-      
-      if (err.message === 'Invalid login credentials' || err.status === 400) {
-        message = 'Usuário ou senha incorretos. Verifique seus dados e tente novamente.';
-      } else if (err.message === 'Email not confirmed') {
-        message = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.';
-      } else if (err.status === 429) {
-        message = 'Muitas tentativas de login. Por favor, aguarde um momento.';
+      if (signUpError) throw signUpError;
+
+      // Se confirmação de email desabilitada no Supabase, redireciona direto
+      if (data.session) {
+        navigate('/onboarding');
+        return;
       }
-      
+
+      // Senão, mostra mensagem de confirmação
+      setSuccess(true);
+    } catch (err: any) {
+      let message = 'Ocorreu um erro ao criar sua conta. Tente novamente.';
+      if (err.message?.includes('already registered')) {
+        message = 'Este e-mail já está cadastrado. Tente fazer login.';
+      } else if (err.message?.includes('Password should be')) {
+        message = 'A senha deve ter pelo menos 6 caracteres.';
+      } else if (err.status === 429) {
+        message = 'Muitas tentativas. Por favor, aguarde um momento.';
+      }
       setError(message);
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#E4E3E0] flex items-center justify-center p-6 font-sans">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-[#141414]/5 overflow-hidden text-center"
+        >
+          <div className="bg-[#141414] p-8 space-y-4">
+            <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto text-[#141414]">
+              <Mail size={32} />
+            </div>
+            <h1 className="text-2xl font-serif italic text-[#E4E3E0]">Confirme seu e-mail</h1>
+          </div>
+          <div className="p-8 space-y-4">
+            <p className="text-primary/70 text-sm leading-relaxed">
+              Enviamos um link de confirmação para <strong>{email}</strong>. Clique no link para ativar sua conta e ser redirecionado para o onboarding.
+            </p>
+            <Link
+              to="/login"
+              className="block text-xs font-bold text-secondary hover:underline uppercase tracking-widest mt-4"
+            >
+              Voltar para o login
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#E4E3E0] flex items-center justify-center p-6 font-sans">
@@ -67,13 +103,13 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-serif italic text-[#E4E3E0]">BarberFlow</h1>
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#E4E3E0]/50 font-bold">
-            Acesse seu painel de controle
+            Cadastre sua barbearia
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="p-8 space-y-6">
+        <form onSubmit={handleRegister} className="p-8 space-y-6">
           {error && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-lg text-center"
@@ -85,14 +121,28 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                <User size={12} /> Email ou Usuário
+                <User size={12} /> Seu Nome
               </label>
               <input
                 type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                placeholder="ex: João Silva"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
+                <Mail size={12} /> E-mail
+              </label>
+              <input
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
-                placeholder="ex: admin"
+                placeholder="ex: joao@barbearia.com"
                 required
               />
             </div>
@@ -107,7 +157,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono pr-12"
-                  placeholder="••••"
+                  placeholder="mínimo 6 caracteres"
                   required
                 />
                 <button
@@ -128,17 +178,17 @@ export default function LoginPage() {
           >
             {loading ? <Loader2 className="animate-spin" size={18} /> : (
               <>
-                Entrar no Sistema
+                Criar conta gratuita
                 <ArrowRight size={18} />
               </>
             )}
           </button>
 
-          <div className="pt-4 text-center">
+          <div className="pt-2 text-center">
             <p className="text-[10px] opacity-30 uppercase tracking-widest font-bold">
-              Não tem uma conta?{' '}
-              <Link to="/register" className="text-secondary cursor-pointer hover:underline">
-                Cadastre sua barbearia
+              Já tem uma conta?{' '}
+              <Link to="/login" className="text-secondary cursor-pointer hover:underline">
+                Faça login
               </Link>
             </p>
           </div>
