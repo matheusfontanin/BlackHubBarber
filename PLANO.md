@@ -2,6 +2,19 @@
 
 > Ordem de execucao: 0 → 1 → 2 → 5 → 4 → 3 → 6 → 9 → 7 → 8 → 10 → 11 → 12
 
+## STATUS ATUAL (24/03/2026)
+
+**FASE 0 Progress:** 6/8 itens completos (75%)
+- ✅ `.env` vars configurado
+- ✅ `useTenant` hook implementado
+- ✅ Auth → Tenant flow corrigido
+- ✅ Refatoração TypeScript (sem `any`, tipos centralizados)
+- ✅ Build validado
+- ⏳ Git & GitHub (próximo)
+- ⏳ Vercel (próximo)
+
+**Próxima Fase:** FASE 1 (Auth & Onboarding) após inicializar Git
+
 ---
 
 ## FASE 0: Infraestrutura & Correcoes (Base)
@@ -10,7 +23,10 @@
 - [x] 0.2 — Corrigir `.env.example` com todas as vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_N8N_WEBHOOK_URL`, `VITE_STRIPE_KEY`, `VITE_APP_URL`
 - [x] 0.3 — Corrigir tenant dinamico: criado hook `useTenant` em `src/hooks/useTenant.ts`
 - [x] 0.4 — Corrigir fluxo Auth → Tenant: onboardingService agora vincula user ao tenant via tenant_members
-- [ ] 0.5 — Configurar Vercel: deploy preview + production branch
+- [x] 0.5 — Refatoração TypeScript completa: removidos todos `any`, tipagem correta de errors, tipos centralizados para onboarding
+- [x] 0.6 — Build validado: npm run build passa sem erros, 3145 módulos transformados
+- [ ] 0.7 — Inicializar Git + criar repo no GitHub + primeiro commit
+- [ ] 0.8 — Configurar Vercel: deploy preview + production branch
 
 ---
 
