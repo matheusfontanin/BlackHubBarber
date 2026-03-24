@@ -1,0 +1,199 @@
+{
+  "name": "BarberFlow — 04 Agente Profissional (Dono)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $('Trigger').item.json.payload;\nconst ctx = typeof raw === 'string' ? JSON.parse(raw) : raw;\nreturn [{ json: ctx }];"
+      },
+      "id": "parse-input",
+      "name": "Parsear input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $json.tenant.id }}&start_time=gte.{{ new Date().toISOString().split('T')[0] }}T00:00:00Z&status=in.(scheduled,confirmed)&select=start_time,end_time,status,clients(name,phone),services(name,price)&order=start_time.asc&limit=10",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-agenda",
+      "name": "Buscar agenda de hoje",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parsear input').item.json;\nconst agenda = $('Buscar agenda de hoje').item.json || [];\nconst tenant = ctx.tenant;\nconst history = ctx.history || [];\n\nconst agendaText = agenda.length === 0 \n  ? 'Nenhum agendamento para hoje.'\n  : agenda.map(a => {\n      const time = new Date(a.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });\n      return `${time} — ${a.clients?.name} (${a.services?.name})`;\n    }).join('\\n');\n\nconst historyMessages = history.map(m => ({\n  role: m.role === 'assistant' ? 'assistant' : 'user',\n  content: m.content\n}));\n\nconst systemPrompt = `Você é o assistente de gestão da ${tenant.name}, falando diretamente com o dono via WhatsApp.\n\nREGRAS:\n- Seja direto e eficiente — o dono está sempre ocupado\n- Use linguagem informal mas profissional\n- Mensagens curtas (máximo 4 linhas)\n- Confirme antes de fazer alterações\n\nAGENDA DE HOJE:\n${agendaText}\n\nCAPACIDADES:\n- Consultar agenda e agendamentos\n- Ver métricas do dia/semana\n- Receber instruções para a IA (\"ENSINAR: ...\") — responda que foi registrado\n- Informar sobre clientes e serviços\n\nSe o dono disser \"ENSINAR: [instrução]\", confirme que a regra foi salva na base de conhecimento.`;\n\nreturn [{\n  json: {\n    ...ctx,\n    agenda,\n    system_prompt: systemPrompt,\n    history_messages: historyMessages\n  }\n}];"
+      },
+      "id": "build-prompt",
+      "name": "Montar contexto do dono",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 500,\n  \"temperature\": 0.5,\n  \"messages\": [\n    { \"role\": \"system\", \"content\": {{ JSON.stringify($json.system_prompt) }} },\n    {{ $json.history_messages.map(m => JSON.stringify(m)).join(',') }},\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.message_text) }} }\n  ]\n}"
+      },
+      "id": "call-openai",
+      "name": "OpenAI ChatGPT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Montar contexto do dono').item.json;\nconst aiResponse = $('OpenAI ChatGPT').item.json;\nconst responseText = aiResponse.choices?.[0]?.message?.content?.trim() || 'Desculpe, tive um problema técnico.';\n\n// Verificar se o dono está ensinando uma regra\nconst msgLower = ctx.message_text.toLowerCase();\nconst isTeaching = msgLower.startsWith('ensinar:') || msgLower.startsWith('ensinar ');\n\nreturn [{ json: { ...ctx, final_response: responseText, is_teaching: isTeaching } }];"
+      },
+      "id": "parse-response",
+      "name": "Parsear resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "teaching",
+              "leftValue": "={{ $json.is_teaching }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-teaching",
+      "name": "Está ensinando?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ai_knowledge",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $json.tenant.id }}\",\n  \"content\": {{ JSON.stringify($json.message_text.replace(/^ensinar:?\\s*/i, '')) }},\n  \"category\": \"owner_rule\"\n}"
+      },
+      "id": "save-knowledge",
+      "name": "Salvar na base de conhecimento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1740, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.sender_phone_full }}\",\n  \"text\": {{ JSON.stringify($json.final_response) }},\n  \"delay\": 1000\n}"
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar pelo WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1960, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"conversation_id\": \"{{ $json.conversation_id }}\",\n  \"role\": \"assistant\",\n  \"content\": {{ JSON.stringify($json.final_response) }}\n}"
+      },
+      "id": "save-message",
+      "name": "Salvar resposta da IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2180, 300]
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [[{ "node": "Parsear input", "type": "main", "index": 0 }]]
+    },
+    "Parsear input": {
+      "main": [[{ "node": "Buscar agenda de hoje", "type": "main", "index": 0 }]]
+    },
+    "Buscar agenda de hoje": {
+      "main": [[{ "node": "Montar contexto do dono", "type": "main", "index": 0 }]]
+    },
+    "Montar contexto do dono": {
+      "main": [[{ "node": "OpenAI ChatGPT", "type": "main", "index": 0 }]]
+    },
+    "OpenAI ChatGPT": {
+      "main": [[{ "node": "Parsear resposta", "type": "main", "index": 0 }]]
+    },
+    "Parsear resposta": {
+      "main": [[{ "node": "Está ensinando?", "type": "main", "index": 0 }]]
+    },
+    "Está ensinando?": {
+      "main": [
+        [{ "node": "Salvar na base de conhecimento", "type": "main", "index": 0 }],
+        [{ "node": "Enviar pelo WhatsApp", "type": "main", "index": 0 }]
+      ]
+    },
+    "Salvar na base de conhecimento": {
+      "main": [[{ "node": "Enviar pelo WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Enviar pelo WhatsApp": {
+      "main": [[{ "node": "Salvar resposta da IA", "type": "main", "index": 0 }]]
+    }
+  }
+}

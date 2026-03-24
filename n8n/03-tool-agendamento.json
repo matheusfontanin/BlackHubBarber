@@ -1,0 +1,188 @@
+{
+  "name": "BarberFlow — 03 Tool Agendamento",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $('Trigger').item.json.payload;\nconst ctx = typeof raw === 'string' ? JSON.parse(raw) : raw;\nreturn [{ json: ctx }];"
+      },
+      "id": "parse-input",
+      "name": "Parsear input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/services?tenant_id=eq.{{ $json.tenant.id }}&name=ilike.*{{ $json.action_data.service_name }}*&is_active=eq.true&select=id,name,price,duration_minutes&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-service",
+      "name": "Buscar serviço",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parsear input').item.json;\nconst services = $('Buscar serviço').item.json || [];\n\nif (!services.length) {\n  return [{ json: { \n    ...ctx,\n    error: 'service_not_found',\n    confirmation_message: `Desculpe, não encontrei o serviço \"${ctx.action_data.service_name}\". Pode me dizer qual serviço você deseja?`\n  }}];\n}\n\nconst service = services[0];\n\n// Calcular janela de busca\nconst preferredDate = ctx.action_data.preferred_date;\nconst now = new Date();\nlet searchFrom = new Date(now);\nsearchFrom.setHours(now.getHours() + 1, 0, 0, 0); // mínimo 1h de antecedência\n\nif (preferredDate && preferredDate !== 'null') {\n  searchFrom = new Date(preferredDate + 'T00:00:00');\n  if (searchFrom < now) searchFrom = now;\n}\n\nconst searchTo = new Date(searchFrom);\nsearchTo.setDate(searchTo.getDate() + 14);\n\nreturn [{\n  json: {\n    ...ctx,\n    service,\n    search_from: searchFrom.toISOString(),\n    search_to: searchTo.toISOString()\n  }\n}];"
+      },
+      "id": "prepare-search",
+      "name": "Preparar busca",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $json.tenant.id }}&start_time=gte.{{ $json.search_from }}&start_time=lte.{{ $json.search_to }}&status=in.(scheduled,confirmed)&select=start_time,end_time",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-busy",
+      "name": "Buscar horários ocupados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Preparar busca').item.json;\nconst busySlots = $('Buscar horários ocupados').item.json || [];\nconst openingHours = ctx.tenant.opening_hours || {};\nconst durationMin = ctx.service.duration_minutes;\nconst preferredTime = ctx.action_data.preferred_time;\n\nconst dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];\nconst availableSlots = [];\n\nconst searchFrom = new Date(ctx.search_from);\nconst searchTo = new Date(ctx.search_to);\n\nfor (let d = new Date(searchFrom); d < searchTo && availableSlots.length < 4; d.setDate(d.getDate() + 1)) {\n  const dayKey = dayKeys[d.getDay()];\n  const hours = openingHours[dayKey];\n  if (!hours || !hours.open) continue;\n\n  const [openH, openM] = (hours.start || '08:00').split(':').map(Number);\n  const [closeH, closeM] = (hours.end || '18:00').split(':').map(Number);\n\n  // Se tem horário preferido, começar por ele\n  let startHour = openH;\n  let startMin = openM;\n  if (preferredTime && preferredTime !== 'null') {\n    const [ph, pm] = preferredTime.split(':').map(Number);\n    if (ph >= openH && ph < closeH) {\n      startHour = ph;\n      startMin = pm || 0;\n    }\n  }\n\n  let slotStart = new Date(d);\n  slotStart.setHours(startHour, startMin, 0, 0);\n\n  const dayEnd = new Date(d);\n  dayEnd.setHours(closeH, closeM, 0, 0);\n\n  // Garantir que não é no passado\n  const now = new Date();\n  if (slotStart < now) slotStart = new Date(Math.ceil(now.getTime() / (30*60000)) * (30*60000));\n\n  while (slotStart < dayEnd && availableSlots.length < 4) {\n    const slotEnd = new Date(slotStart.getTime() + durationMin * 60000);\n    if (slotEnd > dayEnd) break;\n\n    const hasConflict = busySlots.some(b => {\n      const bStart = new Date(b.start_time);\n      const bEnd = new Date(b.end_time);\n      return slotStart < bEnd && slotEnd > bStart;\n    });\n\n    if (!hasConflict) {\n      const label = slotStart.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) +\n                    ' às ' + slotStart.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });\n      availableSlots.push({\n        starts_at: slotStart.toISOString(),\n        ends_at: slotEnd.toISOString(),\n        label\n      });\n    }\n\n    slotStart = new Date(slotStart.getTime() + 30 * 60000); // avançar 30min\n  }\n}\n\nif (availableSlots.length === 0) {\n  return [{ json: {\n    ...ctx,\n    available_slots: [],\n    confirmation_message: `Não encontrei horários disponíveis para ${ctx.service.name} nos próximos dias. Pode tentar outra data?`\n  }}];\n}\n\n// Se só tem 1 slot (intenção de horário específico), agendar direto\n// Se tem múltiplos, oferecer as 3 primeiras opções\nconst slotsText = availableSlots.slice(0, 3).map((s, i) => `${i+1}. ${s.label}`).join('\\n');\n\nreturn [{\n  json: {\n    ...ctx,\n    available_slots: availableSlots,\n    best_slot: availableSlots[0],\n    slots_text: slotsText,\n    // Se pediu horário específico e encontrou, agendar diretamente\n    auto_book: !!(ctx.action_data.preferred_date && ctx.action_data.preferred_time && availableSlots.length > 0)\n  }\n}];"
+      },
+      "id": "find-slots",
+      "name": "Calcular slots disponíveis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "auto-book",
+              "leftValue": "={{ $json.auto_book }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-auto-book",
+      "name": "Agendar direto ou oferecer opções?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $json;\n// Oferecer opções ao cliente\nconst response = `Ótimo! Tenho estes horários disponíveis para *${ctx.service.name}*:\\n\\n${ctx.slots_text}\\n\\nQual prefere? 😊`;\nreturn [{ json: { ...ctx, confirmation_message: response, booked: false } }];"
+      },
+      "id": "offer-slots",
+      "name": "Oferecer opções",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $json.tenant.id }}\",\n  \"client_id\": \"{{ $json.client.id }}\",\n  \"service_id\": \"{{ $json.service.id }}\",\n  \"start_time\": \"{{ $json.best_slot.starts_at }}\",\n  \"end_time\": \"{{ $json.best_slot.ends_at }}\",\n  \"status\": \"scheduled\",\n  \"source\": \"whatsapp_ai\"\n}"
+      },
+      "id": "create-appointment",
+      "name": "Criar agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1740, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Calcular slots disponíveis').item.json;\nconst appointment = $('Criar agendamento').item.json;\nconst slot = ctx.best_slot;\n\nconst dateLabel = new Date(slot.starts_at).toLocaleDateString('pt-BR', { \n  weekday: 'long', day: '2-digit', month: 'long' \n});\nconst timeLabel = new Date(slot.starts_at).toLocaleTimeString('pt-BR', { \n  hour: '2-digit', minute: '2-digit' \n});\n\nconst response = `✅ *Agendamento confirmado!*\\n\\n` +\n  `📋 ${ctx.service.name}\\n` +\n  `📅 ${dateLabel}\\n` +\n  `🕐 ${timeLabel}\\n` +\n  `💰 R$ ${Number(ctx.service.price).toFixed(2)}\\n\\n` +\n  `Qualquer dúvida é só chamar! Até lá 😊`;\n\nreturn [{ json: { ...ctx, confirmation_message: response, booked: true } }];"
+      },
+      "id": "confirm-booking",
+      "name": "Mensagem de confirmação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 180]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "input1"
+      },
+      "id": "merge-final",
+      "name": "Resultado final",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2180, 300]
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [[{ "node": "Parsear input", "type": "main", "index": 0 }]]
+    },
+    "Parsear input": {
+      "main": [[{ "node": "Buscar serviço", "type": "main", "index": 0 }]]
+    },
+    "Buscar serviço": {
+      "main": [[{ "node": "Preparar busca", "type": "main", "index": 0 }]]
+    },
+    "Preparar busca": {
+      "main": [[{ "node": "Buscar horários ocupados", "type": "main", "index": 0 }]]
+    },
+    "Buscar horários ocupados": {
+      "main": [[{ "node": "Calcular slots disponíveis", "type": "main", "index": 0 }]]
+    },
+    "Calcular slots disponíveis": {
+      "main": [[{ "node": "Agendar direto ou oferecer opções?", "type": "main", "index": 0 }]]
+    },
+    "Agendar direto ou oferecer opções?": {
+      "main": [
+        [{ "node": "Criar agendamento", "type": "main", "index": 0 }],
+        [{ "node": "Oferecer opções", "type": "main", "index": 0 }]
+      ]
+    },
+    "Criar agendamento": {
+      "main": [[{ "node": "Mensagem de confirmação", "type": "main", "index": 0 }]]
+    },
+    "Mensagem de confirmação": {
+      "main": [[{ "node": "Resultado final", "type": "main", "index": 0 }]]
+    },
+    "Oferecer opções": {
+      "main": [[{ "node": "Resultado final", "type": "main", "index": 1 }]]
+    }
+  }
+}

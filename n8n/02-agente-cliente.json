@@ -1,0 +1,233 @@
+{
+  "name": "BarberFlow — 02 Agente Cliente",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $('Trigger').item.json.payload;\nconst ctx = typeof raw === 'string' ? JSON.parse(raw) : raw;\n\nconst tenant = ctx.tenant;\nconst client = ctx.client;\nconst history = ctx.history || [];\n\n// Buscar serviços do tenant\nreturn [{ json: ctx }];"
+      },
+      "id": "parse-input",
+      "name": "Parsear input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/services?tenant_id=eq.{{ $json.tenant.id }}&is_active=eq.true&select=name,price,duration_minutes&order=name",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-services",
+      "name": "Buscar serviços",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parsear input').item.json;\nconst services = $('Buscar serviços').item.json || [];\nconst tenant = ctx.tenant;\nconst client = ctx.client;\nconst history = ctx.history || [];\n\n// Formatar serviços para o prompt\nconst servicesText = services.map(s => \n  `- ${s.name}: R$ ${Number(s.price).toFixed(2)} (${s.duration_minutes}min)`\n).join('\\n');\n\n// Formatar horários de funcionamento\nconst days = { sun: 'Domingo', mon: 'Segunda', tue: 'Terça', wed: 'Quarta', thu: 'Quinta', fri: 'Sexta', sat: 'Sábado' };\nconst openingHours = tenant.opening_hours || {};\nconst hoursText = Object.entries(days)\n  .map(([key, label]) => {\n    const h = openingHours[key];\n    if (!h || !h.open) return `${label}: Fechado`;\n    return `${label}: ${h.start} às ${h.end}`;\n  })\n  .join('\\n');\n\n// Construir mensagens de histórico para OpenAI\nconst historyMessages = history.map(m => ({\n  role: m.role === 'assistant' ? 'assistant' : 'user',\n  content: m.content\n}));\n\nconst systemPrompt = `Você é ${tenant.ai_name || 'Assistente'}, atendente virtual da ${tenant.name}.\n\nPERSONALIDADE:\n${tenant.ai_personality || 'Seja simpático, próximo e profissional.'}\n\n${tenant.ai_custom_instructions ? 'INSTRUÇÕES ESPECIAIS:\\n' + tenant.ai_custom_instructions + '\\n' : ''}\nREGRAS DE COMUNICAÇÃO:\n- Mensagens CURTAS (máximo 3 linhas por resposta)\n- Use emojis com moderação\n- Chame o cliente pelo nome quando souber\n- Nunca invente horários ou disponibilidade\n- Se não souber responder, diga que vai verificar\n\nSERVIÇOS DISPONÍVEIS:\n${servicesText}\n\nHORÁRIOS DE FUNCIONAMENTO:\n${hoursText}\n\nCLIENTE:\n- Nome: ${client?.name || ctx.sender_name}\n- Pontos de fidelidade: ${client?.loyalty_points || 0}\n\nPARA AGENDAR:\nQuando o cliente quiser agendar, responda APENAS com este JSON (sem texto adicional):\n{\"action\": \"schedule\", \"service_name\": \"NOME_DO_SERVICO\", \"preferred_date\": \"YYYY-MM-DD ou null\", \"preferred_time\": \"HH:MM ou null\"}\n\nPara qualquer outra resposta, responda normalmente em texto.`;\n\nreturn [{\n  json: {\n    ...ctx,\n    services,\n    system_prompt: systemPrompt,\n    history_messages: historyMessages\n  }\n}];"
+      },
+      "id": "build-prompt",
+      "name": "Montar system prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 300,\n  \"temperature\": 0.7,\n  \"messages\": [\n    { \"role\": \"system\", \"content\": {{ JSON.stringify($json.system_prompt) }} },\n    {{ $json.history_messages.map(m => JSON.stringify(m)).join(',') }},\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.message_text) }} }\n  ]\n}"
+      },
+      "id": "call-openai",
+      "name": "OpenAI ChatGPT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Montar system prompt').item.json;\nconst aiResponse = $('OpenAI ChatGPT').item.json;\nconst responseText = aiResponse.choices?.[0]?.message?.content?.trim() || 'Desculpe, tive um problema. Pode repetir?';\n\n// Verificar se a IA quer agendar (retornou JSON)\nlet action = null;\nlet actionData = null;\ntry {\n  const parsed = JSON.parse(responseText);\n  if (parsed.action === 'schedule') {\n    action = 'schedule';\n    actionData = parsed;\n  }\n} catch (e) {\n  // Resposta normal em texto\n}\n\nreturn [{\n  json: {\n    ...ctx,\n    ai_response: responseText,\n    action,\n    action_data: actionData\n  }\n}];"
+      },
+      "id": "parse-ai-response",
+      "name": "Parsear resposta da IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "is-schedule",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "schedule",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-action",
+      "name": "Quer agendar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "SUBSTITUIR_PELO_ID_TOOL_AGENDAMENTO",
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "payload": "={{ JSON.stringify($json) }}"
+          }
+        }
+      },
+      "id": "call-agendamento",
+      "name": "→ Tool Agendamento",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1740, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Após agendamento, o tool retorna a mensagem de confirmação\nconst toolResult = $('→ Tool Agendamento').item.json;\nconst ctx = $('Parsear resposta da IA').item.json;\n\nreturn [{\n  json: {\n    ...ctx,\n    final_response: toolResult.confirmation_message || 'Agendamento realizado! ✅'\n  }\n}];"
+      },
+      "id": "merge-schedule-result",
+      "name": "Resultado do agendamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parsear resposta da IA').item.json;\nreturn [{ json: { ...ctx, final_response: ctx.ai_response } }];"
+      },
+      "id": "set-text-response",
+      "name": "Resposta em texto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 420]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "input1"
+      },
+      "id": "merge-responses",
+      "name": "Unificar resposta",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2180, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.sender_phone_full }}\",\n  \"text\": {{ JSON.stringify($json.final_response) }},\n  \"delay\": 1200\n}"
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar pelo WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"conversation_id\": \"{{ $json.conversation_id }}\",\n  \"role\": \"assistant\",\n  \"content\": {{ JSON.stringify($json.final_response) }}\n}"
+      },
+      "id": "save-ai-message",
+      "name": "Salvar resposta da IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2620, 300]
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [[{ "node": "Parsear input", "type": "main", "index": 0 }]]
+    },
+    "Parsear input": {
+      "main": [[{ "node": "Buscar serviços", "type": "main", "index": 0 }]]
+    },
+    "Buscar serviços": {
+      "main": [[{ "node": "Montar system prompt", "type": "main", "index": 0 }]]
+    },
+    "Montar system prompt": {
+      "main": [[{ "node": "OpenAI ChatGPT", "type": "main", "index": 0 }]]
+    },
+    "OpenAI ChatGPT": {
+      "main": [[{ "node": "Parsear resposta da IA", "type": "main", "index": 0 }]]
+    },
+    "Parsear resposta da IA": {
+      "main": [[{ "node": "Quer agendar?", "type": "main", "index": 0 }]]
+    },
+    "Quer agendar?": {
+      "main": [
+        [{ "node": "→ Tool Agendamento", "type": "main", "index": 0 }],
+        [{ "node": "Resposta em texto", "type": "main", "index": 0 }]
+      ]
+    },
+    "→ Tool Agendamento": {
+      "main": [[{ "node": "Resultado do agendamento", "type": "main", "index": 0 }]]
+    },
+    "Resultado do agendamento": {
+      "main": [[{ "node": "Unificar resposta", "type": "main", "index": 0 }]]
+    },
+    "Resposta em texto": {
+      "main": [[{ "node": "Unificar resposta", "type": "main", "index": 1 }]]
+    },
+    "Unificar resposta": {
+      "main": [[{ "node": "Enviar pelo WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Enviar pelo WhatsApp": {
+      "main": [[{ "node": "Salvar resposta da IA", "type": "main", "index": 0 }]]
+    }
+  }
+}

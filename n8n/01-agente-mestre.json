@@ -1,0 +1,388 @@
+{
+  "name": "BarberFlow — 01 Agente Mestre",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "barberflow-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "barberflow-whatsapp"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [400, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\n// Ignorar eventos que não são de mensagem\nif (body.event !== 'messages.upsert') return [];\n\nconst msg = body.data;\n\n// Ignorar mensagens próprias (echo), de grupo e sem texto\nif (msg.key?.fromMe) return [];\nif (msg.key?.remoteJid?.endsWith('@g.us')) return [];\n\nconst text = msg.message?.conversation \n  || msg.message?.extendedTextMessage?.text \n  || '';\n\nif (!text.trim()) return [];\n\nconst phone = msg.key.remoteJid\n  .replace('@s.whatsapp.net', '')\n  .replace(/^55/, ''); // Remove código do país BR se presente\n\nreturn [{\n  json: {\n    instance_name: body.instance,\n    sender_phone: phone,\n    sender_phone_full: msg.key.remoteJid.replace('@s.whatsapp.net', ''),\n    sender_name: msg.pushName || 'Cliente',\n    message_text: text.trim(),\n    message_id: msg.key.id,\n    timestamp: msg.messageTimestamp\n  }\n}];"
+      },
+      "id": "normalize",
+      "name": "Normalizar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 380]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenants?whatsapp_instance=eq.{{ $json.instance_name }}&select=id,name,phone,ai_name,ai_personality,ai_custom_instructions,opening_hours,google_calendar_id,google_refresh_token,whatsapp_instance&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-tenant",
+      "name": "Buscar tenant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "id": "has-tenant",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ]
+        }
+      },
+      "id": "check-tenant",
+      "name": "Tenant encontrado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients?tenant_id=eq.{{ $('Buscar tenant').item.json[0].id }}&phone=like.*{{ $('Normalizar payload').item.json.sender_phone }}*&select=id,name,phone,email,loyalty_points&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-client",
+      "name": "Buscar cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1060, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "client-exists",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ]
+        }
+      },
+      "id": "check-client",
+      "name": "Cliente existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1280, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $('Buscar tenant').item.json[0].id }}\",\n  \"name\": \"{{ $('Normalizar payload').item.json.sender_name }}\",\n  \"phone\": \"{{ $('Normalizar payload').item.json.sender_phone }}\"\n}"
+      },
+      "id": "create-client",
+      "name": "Criar novo cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolidar dados do cliente (existente ou recém criado)\nconst tenant = $('Buscar tenant').item.json[0];\nconst msg = $('Normalizar payload').item.json;\n\nlet client;\nconst existingClients = $('Buscar cliente').item.json;\nif (existingClients && existingClients.length > 0) {\n  client = existingClients[0];\n} else {\n  const created = $('Criar novo cliente').item.json;\n  client = Array.isArray(created) ? created[0] : created;\n}\n\n// Verificar se é o dono (compara telefone com o cadastrado no tenant)\nconst cleanTenantPhone = (tenant.phone || '').replace(/\\D/g, '').slice(-9);\nconst cleanSenderPhone = (msg.sender_phone || '').replace(/\\D/g, '').slice(-9);\nconst isOwner = cleanTenantPhone === cleanSenderPhone;\n\nreturn [{\n  json: {\n    tenant,\n    client,\n    message_text: msg.message_text,\n    sender_phone: msg.sender_phone,\n    sender_phone_full: msg.sender_phone_full,\n    sender_name: msg.sender_name,\n    instance_name: msg.instance_name,\n    message_id: msg.message_id,\n    is_owner: isOwner\n  }\n}];"
+      },
+      "id": "merge-context",
+      "name": "Montar contexto completo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 220]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/conversations?tenant_id=eq.{{ $json.tenant.id }}&client_id=eq.{{ $json.client.id }}&channel=eq.whatsapp&status=in.(open,ai_handling)&select=id,status&order=created_at.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-conversation",
+      "name": "Buscar conversa ativa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1940, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "conv-exists",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ]
+        }
+      },
+      "id": "check-conversation",
+      "name": "Conversa existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2160, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $('Montar contexto completo').item.json.tenant.id }}\",\n  \"client_id\": \"{{ $('Montar contexto completo').item.json.client.id }}\",\n  \"channel\": \"whatsapp\",\n  \"status\": \"ai_handling\"\n}"
+      },
+      "id": "create-conversation",
+      "name": "Criar conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2380, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Montar contexto completo').item.json;\n\nlet conversationId;\nconst existing = $('Buscar conversa ativa').item.json;\nif (existing && existing.length > 0) {\n  conversationId = existing[0].id;\n} else {\n  const created = $('Criar conversa').item.json;\n  const c = Array.isArray(created) ? created[0] : created;\n  conversationId = c.id;\n}\n\nreturn [{ json: { ...ctx, conversation_id: conversationId } }];"
+      },
+      "id": "set-conversation-id",
+      "name": "Definir conversation_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2600, 220]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages?conversation_id=eq.{{ $json.conversation_id }}&select=role,content&order=created_at.desc&limit=10",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-history",
+      "name": "Carregar histórico",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2820, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"conversation_id\": \"{{ $('Definir conversation_id').item.json.conversation_id }}\",\n  \"role\": \"user\",\n  \"content\": \"{{ $('Montar contexto completo').item.json.message_text }}\"\n}"
+      },
+      "id": "save-user-message",
+      "name": "Salvar mensagem do usuário",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3040, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Definir conversation_id').item.json;\nconst history = $('Carregar histórico').item.json || [];\n\n// Inverter para ordem cronológica (veio desc do Supabase)\nconst orderedHistory = [...history].reverse();\n\nreturn [{ json: { ...ctx, history: orderedHistory } }];"
+      },
+      "id": "prepare-final",
+      "name": "Preparar para roteamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3260, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "is-owner",
+              "leftValue": "={{ $json.is_owner }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "route",
+      "name": "Dono ou Cliente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3480, 220]
+    },
+    {
+      "parameters": {
+        "workflowId": "SUBSTITUIR_PELO_ID_AGENTE_PROFISSIONAL",
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "payload": "={{ JSON.stringify($json) }}"
+          }
+        }
+      },
+      "id": "call-profissional",
+      "name": "→ Agente Profissional",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [3700, 140]
+    },
+    {
+      "parameters": {
+        "workflowId": "SUBSTITUIR_PELO_ID_AGENTE_CLIENTE",
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "payload": "={{ JSON.stringify($json) }}"
+          }
+        }
+      },
+      "id": "call-cliente",
+      "name": "→ Agente Cliente",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [3700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [{ "node": "Respond 200 OK", "type": "main", "index": 0 }],
+        [{ "node": "Normalizar payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar payload": {
+      "main": [[{ "node": "Buscar tenant", "type": "main", "index": 0 }]]
+    },
+    "Buscar tenant": {
+      "main": [[{ "node": "Tenant encontrado?", "type": "main", "index": 0 }]]
+    },
+    "Tenant encontrado?": {
+      "main": [
+        [{ "node": "Buscar cliente", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Buscar cliente": {
+      "main": [[{ "node": "Cliente existe?", "type": "main", "index": 0 }]]
+    },
+    "Cliente existe?": {
+      "main": [
+        [{ "node": "Montar contexto completo", "type": "main", "index": 0 }],
+        [{ "node": "Criar novo cliente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Criar novo cliente": {
+      "main": [[{ "node": "Montar contexto completo", "type": "main", "index": 0 }]]
+    },
+    "Montar contexto completo": {
+      "main": [[{ "node": "Buscar conversa ativa", "type": "main", "index": 0 }]]
+    },
+    "Buscar conversa ativa": {
+      "main": [[{ "node": "Conversa existe?", "type": "main", "index": 0 }]]
+    },
+    "Conversa existe?": {
+      "main": [
+        [{ "node": "Definir conversation_id", "type": "main", "index": 0 }],
+        [{ "node": "Criar conversa", "type": "main", "index": 0 }]
+      ]
+    },
+    "Criar conversa": {
+      "main": [[{ "node": "Definir conversation_id", "type": "main", "index": 0 }]]
+    },
+    "Definir conversation_id": {
+      "main": [[{ "node": "Carregar histórico", "type": "main", "index": 0 }]]
+    },
+    "Carregar histórico": {
+      "main": [[{ "node": "Salvar mensagem do usuário", "type": "main", "index": 0 }]]
+    },
+    "Salvar mensagem do usuário": {
+      "main": [[{ "node": "Preparar para roteamento", "type": "main", "index": 0 }]]
+    },
+    "Preparar para roteamento": {
+      "main": [[{ "node": "Dono ou Cliente?", "type": "main", "index": 0 }]]
+    },
+    "Dono ou Cliente?": {
+      "main": [
+        [{ "node": "→ Agente Profissional", "type": "main", "index": 0 }],
+        [{ "node": "→ Agente Cliente", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
