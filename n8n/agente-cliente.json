@@ -1,0 +1,77 @@
+{
+  "name": "BarberFlow — Agente Cliente",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Executado pelo Agente Mestre",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Executado pelo Agente Mestre').item.json;\nconst tenantData = input.tenant_data;\n\nconst systemPrompt = `Você é o assistente virtual da barbearia ${tenantData.name}.\nVocê atende via WhatsApp.\n\nPERSONALIDADE:\n${tenantData.ai_personality || 'Seja simpático, próximo e profissional.'}\n\nINSTRUÇÕES DE TOM:\n- Seja humano, use o nome do cliente naturalmente\n- Mensagens curtas (máximo 3 linhas)\n- Confirme agendamentos com entusiasmo\n\nCONTEXTO DO CLIENTE:\n- Nome: ${input.sender_name}\n- Pontos de fidelidade: ${input.client_data?.loyalty_points || 0}\n\nINFORMAÇÕES DA BARBEARIA:\n- Serviços: ${JSON.stringify(tenantData.services || [])}\n- Horários: ${JSON.stringify(tenantData.opening_hours || {})}\n- Endereço: ${tenantData.address || ''}`;\n\nreturn [{\n  json: {\n    ...input,\n    system_prompt: systemPrompt\n  }\n}];"
+      },
+      "id": "build-client-context",
+      "name": "Montar contexto do cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-sonnet-20240620\",\n  \"max_tokens\": 512,\n  \"system\": {{ JSON.stringify($('Montar contexto do cliente').item.json.system_prompt) }},\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify($('Executado pelo Agente Mestre').item.json.message_text) }}\n    }\n  ]\n}"
+      },
+      "id": "call-claude",
+      "name": "Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [940, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Executado pelo Agente Mestre').item.json.tenant_data.evolution_api_url }}/message/sendText/{{ $('Executado pelo Agente Mestre').item.json.tenant_data.whatsapp_instance_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Executado pelo Agente Mestre').item.json.tenant_data.evolution_api_key }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Executado pelo Agente Mestre').item.json.sender_phone }}\",\n  \"text\": {{ JSON.stringify($json.content[0].text) }},\n  \"delay\": 1200\n}"
+      },
+      "id": "send-response",
+      "name": "Enviar resposta ao cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 400]
+    }
+  ],
+  "connections": {
+    "Executado pelo Agente Mestre": {
+      "main": [[{ "node": "Montar contexto do cliente", "type": "main", "index": 0 }]]
+    },
+    "Montar contexto do cliente": {
+      "main": [[{ "node": "Claude API", "type": "main", "index": 0 }]]
+    },
+    "Claude API": {
+      "main": [[{ "node": "send-response", "type": "main", "index": 0 }]]
+    }
+  }
+}

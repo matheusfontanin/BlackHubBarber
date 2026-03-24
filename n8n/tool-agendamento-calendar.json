@@ -1,0 +1,113 @@
+{
+  "name": "BarberFlow — Tool: Agendamento Google Calendar",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Chamado pelo Agente Cliente",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenants?id=eq.{{ $json.tenant_id }}&select=google_calendar_id,opening_hours,name",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-tenant-calendar",
+      "name": "Buscar calendar ID do tenant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/services?id=eq.{{ $('Chamado pelo Agente Cliente').item.json.service_id }}&select=name,duration_minutes,price",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-service",
+      "name": "Buscar serviço",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tenant = $('Buscar calendar ID do tenant').item.json[0];\nconst service = $('Buscar serviço').item.json[0];\nconst input = $('Chamado pelo Agente Cliente').item.json;\n\n// Calcular janela de busca: próximos 7 dias úteis\nconst now = new Date();\nconst start = new Date(now);\nstart.setHours(0, 0, 0, 0);\nconst end = new Date(start);\nend.setDate(end.getDate() + 10); // 10 dias para garantir 7 úteis\n\nreturn [{\n  json: {\n    ...input,\n    tenant_data: tenant,\n    service_data: service,\n    calendar_id: tenant.google_calendar_id,\n    opening_hours: tenant.opening_hours,\n    duration_minutes: service.duration_minutes,\n    search_from: start.toISOString(),\n    search_to: end.toISOString()\n  }\n}];"
+      },
+      "id": "prepare-calendar-query",
+      "name": "Preparar busca de slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "operation": "getAll",
+        "calendar": "={{ $json.calendar_id }}",
+        "returnAll": false,
+        "limit": 50,
+        "options": {
+          "timeMin": "={{ $json.search_from }}",
+          "timeMax": "={{ $json.search_to }}"
+        }
+      },
+      "id": "fetch-busy-slots",
+      "name": "Buscar eventos existentes",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const busyEvents = $input.all().map(e => e.json) || [];\nconst ctx = $('Preparar busca de slots').item.json;\nconst openingHours = ctx.opening_hours || {};\nconst durationMin = ctx.duration_minutes || 30;\n\n// Mapear dias da semana\nconst dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];\n\n// Gerar slots disponíveis\nconst availableSlots = [];\nconst now = new Date();\n\nfor (let dayOffset = 0; dayOffset < 10 && availableSlots.length < 5; dayOffset++) {\n  const date = new Date(now);\n  date.setDate(date.getDate() + dayOffset);\n  if (date <= now) continue; // pular hoje se for tarde\n\n  const dayKey = dayKeys[date.getDay()];\n  const hours = openingHours[dayKey];\n  if (!hours || !hours.open) continue; // dia fechado\n\n  // Gerar slots de acordo com duração do serviço\n  const [openH, openM] = hours.start.split(':').map(Number);\n  const [closeH, closeM] = hours.end.split(':').map(Number);\n\n  let slotStart = new Date(date);\n  slotStart.setHours(openH, openM, 0, 0);\n  const dayEnd = new Date(date);\n  dayEnd.setHours(closeH, closeM, 0, 0);\n\n  while (slotStart < dayEnd && availableSlots.length < 5) {\n    const slotEnd = new Date(slotStart.getTime() + durationMin * 60000);\n\n    if (slotEnd > dayEnd) break;\n\n    // Verificar conflito com eventos existentes\n    const hasConflict = busyEvents.some(event => {\n      const evStart = new Date(event.start?.dateTime || event.start?.date);\n      const evEnd = new Date(event.end?.dateTime || event.end?.date);\n      return slotStart < evEnd && slotEnd > evStart;\n    });\n\n    if (!hasConflict) {\n      availableSlots.push({\n        starts_at: slotStart.toISOString(),\n        ends_at: slotEnd.toISOString(),\n        label: slotStart.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) +\n               ' às ' + slotStart.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })\n      });\n    }\n\n    // Avançar 15 minutos\n    slotStart = new Date(slotStart.getTime() + 15 * 60000);\n  }\n}\n\nreturn [{\n  json: {\n    ...ctx,\n    available_slots: availableSlots,\n    slots_text: availableSlots.slice(0, 3).map((s, i) => `${i+1}. ${s.label}`).join('\\n')\n  }\n}];"
+      },
+      "id": "calculate-available-slots",
+      "name": "Calcular slots disponíveis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    }
+  ],
+  "connections": {
+    "Chamado pelo Agente Cliente": {
+      "main": [
+        [
+          { "node": "Buscar calendar ID do tenant", "type": "main", "index": 0 },
+          { "node": "Buscar serviço", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Buscar calendar ID do tenant": {
+      "main": [[{ "node": "Preparar busca de slots", "type": "main", "index": 0 }]]
+    },
+    "Buscar serviço": {
+      "main": [[{ "node": "Preparar busca de slots", "type": "main", "index": 0 }]]
+    },
+    "Preparar busca de slots": {
+      "main": [[{ "node": "Buscar eventos existentes", "type": "main", "index": 0 }]]
+    },
+    "Buscar eventos existentes": {
+      "main": [[{ "node": "Calcular slots disponíveis", "type": "main", "index": 0 }]]
+    }
+  }
+}

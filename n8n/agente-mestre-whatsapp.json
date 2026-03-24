@@ -1,0 +1,191 @@
+{
+  "name": "BarberFlow — Agente Mestre (WhatsApp + Instagram)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp/:tenant_id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-whatsapp",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "barberflow-whatsapp"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram/:tenant_id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-instagram",
+      "name": "Webhook Instagram",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 480],
+      "webhookId": "barberflow-instagram"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond-200",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-channels",
+      "name": "Normalizar canal",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [460, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalizar payload de WhatsApp (Evolution API) para formato interno\nconst body = $input.first().json;\nconst tenantId = $input.first().params?.tenant_id;\n\nlet normalized = {};\n\n// Detectar canal pelo formato do payload\nif (body.event && body.instance) {\n  // WhatsApp via Evolution API\n  const msg = body.data;\n  normalized = {\n    channel: 'whatsapp',\n    tenant_id: tenantId,\n    sender_phone: msg.key.remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', ''),\n    sender_name: msg.pushName || 'Cliente',\n    message_text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || '',\n    message_id: msg.key.id,\n    timestamp: msg.messageTimestamp,\n    instance_name: body.instance,\n    raw: body\n  };\n} else if (body.object === 'instagram') {\n  // Instagram Graph API\n  const entry = body.entry?.[0];\n  const messaging = entry?.messaging?.[0];\n  normalized = {\n    channel: 'instagram',\n    tenant_id: tenantId,\n    sender_instagram_id: messaging?.sender?.id,\n    sender_name: 'Cliente Instagram',\n    message_text: messaging?.message?.text || '',\n    message_id: messaging?.message?.mid,\n    timestamp: messaging?.timestamp,\n    page_id: entry?.id,\n    raw: body\n  };\n}\n\n// Ignorar mensagens vazias, de eco, ou de grupo\nif (!normalized.message_text || normalized.message_text.trim() === '') {\n  return [];\n}\n\nreturn [{ json: normalized }];"
+      },
+      "id": "normalize-payload",
+      "name": "Normalizar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/identify_sender",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "p_tenant_id", "value": "={{ $json.tenant_id }}" },
+            { "name": "p_phone", "value": "={{ $json.sender_phone }}" },
+            { "name": "p_instagram_id", "value": "={{ $json.sender_instagram_id }}" }
+          ]
+        }
+      },
+      "id": "identify-sender",
+      "name": "Identificar remetente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "id": "is-owner",
+              "leftValue": "={{ $json.is_owner }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "router-owner-client",
+      "name": "Dono ou Cliente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $vars.WORKFLOW_ID_AGENTE_PROFISSIONAL }}",
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $('normalize-payload').item.json.tenant_id }}",
+            "tenant_data": "={{ $json.tenant_data }}",
+            "owner_name": "={{ $json.owner_name }}",
+            "message_text": "={{ $('normalize-payload').item.json.message_text }}",
+            "channel": "={{ $('normalize-payload').item.json.channel }}",
+            "sender_phone": "={{ $('normalize-payload').item.json.sender_phone }}",
+            "message_id": "={{ $('normalize-payload').item.json.message_id }}"
+          }
+        }
+      },
+      "id": "call-agente-profissional",
+      "name": "→ Agente Profissional",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1340, 260]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $vars.WORKFLOW_ID_AGENTE_CLIENTE }}",
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $('normalize-payload').item.json.tenant_id }}",
+            "tenant_data": "={{ $json.tenant_data }}",
+            "client_id": "={{ $json.client_id }}",
+            "client_data": "={{ $json.client_data }}",
+            "message_text": "={{ $('normalize-payload').item.json.message_text }}",
+            "channel": "={{ $('normalize-payload').item.json.channel }}",
+            "sender_phone": "={{ $('normalize-payload').item.json.sender_phone }}",
+            "sender_instagram_id": "={{ $('normalize-payload').item.json.sender_instagram_id }}",
+            "sender_name": "={{ $('normalize-payload').item.json.sender_name }}",
+            "message_id": "={{ $('normalize-payload').item.json.message_id }}"
+          }
+        }
+      },
+      "id": "call-agente-cliente",
+      "name": "→ Agente Cliente",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1340, 540]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [{ "node": "Respond 200 OK", "type": "main", "index": 0 }],
+        [{ "node": "Normalizar payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Instagram": {
+      "main": [
+        [{ "node": "Normalizar payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar payload": {
+      "main": [
+        [{ "node": "Identificar remetente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Identificar remetente": {
+      "main": [
+        [{ "node": "Dono ou Cliente?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dono ou Cliente?": {
+      "main": [
+        [{ "node": "→ Agente Profissional", "type": "main", "index": 0 }],
+        [{ "node": "→ Agente Cliente", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
