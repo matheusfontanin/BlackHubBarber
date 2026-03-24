@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, CheckCircle2, Loader2, Wifi, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { CalendarStepData } from '@/types/onboarding';
 
 interface CalendarStepProps {
-  onNext: (data?: { googleCalendarConnected?: boolean }) => void;
+  onNext: (data?: CalendarStepData) => void;
   onBack: () => void;
 }
 
@@ -43,8 +44,9 @@ export default function CalendarStep({ onNext, onBack }: CalendarStepProps) {
 
       // Redireciona para o Google OAuth
       window.location.href = data.url;
-    } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com o Google Calendar.');
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : 'Erro ao conectar com o Google Calendar.';
+      setError(error);
       setLoading(false);
     }
   };

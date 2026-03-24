@@ -31,6 +31,8 @@ export interface Appointment {
   notes?: string;
   tenant_id: string;
   source?: string;
+  clients?: { name: string; phone: string };
+  services?: { name: string; price: number; duration_minutes: number };
 }
 
 export const crudService = {
@@ -60,7 +62,7 @@ export const crudService = {
     if (error) throw error;
   },
 
-  // Clients (tabela "clients" no schema)
+  // Clients
   async getCustomers(tenantId: string) {
     const { data, error } = await supabase
       .from('clients')
@@ -95,17 +97,17 @@ export const crudService = {
       .lte('start_time', end)
       .order('start_time');
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []) as Appointment[];
   },
-  async createAppointment(appointment: Omit<Appointment, 'id'>) {
+  async createAppointment(appointment: Omit<Appointment, 'id' | 'clients' | 'services'>) {
     const { data, error } = await supabase.from('appointments').insert(appointment).select().single();
     if (error) throw error;
-    return data;
+    return data as Appointment;
   },
   async updateAppointment(id: string, appointment: Partial<Appointment>) {
     const { data, error } = await supabase.from('appointments').update(appointment).eq('id', id).select().single();
     if (error) throw error;
-    return data;
+    return data as Appointment;
   },
   async deleteAppointment(id: string) {
     const { error } = await supabase.from('appointments').delete().eq('id', id);

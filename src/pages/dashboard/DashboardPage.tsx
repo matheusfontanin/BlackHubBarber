@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
@@ -140,7 +139,7 @@ export default function DashboardPage() {
   );
 }
 
-function ActivityItem({ time, text, icon: Icon }: { time: string, text: string, icon: any }) {
+function ActivityItem({ time, text, icon: Icon }: { time: string, text: string, icon: React.ComponentType<{ size?: number }> }) {
   return (
     <div className="flex gap-4">
       <div className="shrink-0 w-8 h-8 rounded-full bg-[#E4E3E0]/10 flex items-center justify-center text-secondary">

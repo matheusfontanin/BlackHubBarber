@@ -1,23 +1,10 @@
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { motion } from 'motion/react';
 import { IMaskInput } from 'react-imask';
 import { Store, User, Phone, Mail, MapPin, Camera } from 'lucide-react';
-
-const barbershopSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  ownerName: z.string().min(2, 'Nome do dono deve ter pelo menos 2 caracteres'),
-  phone: z.string().min(10, 'Telefone inválido'),
-  email: z.string().email('E-mail inválido'),
-  address: z.string().min(5, 'Endereço muito curto'),
-  city: z.string().min(2, 'Cidade inválida'),
-  state: z.string().length(2, 'Use a sigla do estado (ex: SP)'),
-  instagram: z.string().optional(),
-});
-
-type BarbershopFormData = z.infer<typeof barbershopSchema>;
+import { barbershopSchema, type BarbershopFormData } from '@/types/onboarding';
 
 interface BarbershopInfoStepProps {
   onNext: (data: BarbershopFormData) => void;

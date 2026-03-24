@@ -1,31 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IMaskInput } from 'react-imask';
-import { 
-  Plus, 
-  Search, 
-  Users, 
-  Phone, 
-  Mail, 
-  Edit2, 
-  Trash2, 
-  X, 
+import {
+  Plus,
+  Search,
+  Users,
+  Phone,
+  Mail,
+  Edit2,
+  Trash2,
+  X,
   Check,
-  Loader2,
-  MessageSquare,
-  Calendar
+  Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { crudService, Customer } from '@/services/crudService';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/hooks/useTenant';
 
 export default function CustomersPage() {
+  const { tenantId, loading: tenantLoading } = useTenant();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Form State
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -33,20 +31,18 @@ export default function CustomersPage() {
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const { isDev } = useAuth();
-  const tenantId = '00000000-0000-0000-0000-000000000000';
-
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    if (tenantId) fetchCustomers();
+  }, [tenantId]);
 
   const fetchCustomers = async () => {
+    if (!tenantId) return;
     setLoading(true);
     try {
       const data = await crudService.getCustomers(tenantId);
       setCustomers(data);
-    } catch (error) {
-      console.error('Error fetching customers:', error);
+    } catch (error: unknown) {
+      console.error('Erro ao buscar clientes:', error);
     } finally {
       setLoading(false);
     }
@@ -71,6 +67,7 @@ export default function CustomersPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
     setIsSaving(true);
     try {
       const customerData = {
@@ -78,10 +75,8 @@ export default function CustomersPage() {
         phone,
         email,
         notes,
-        tenant_id: tenantId
+        tenant_id: tenantId,
       };
-
-      console.log('Saving customer:', customerData);
 
       if (editingCustomer?.id) {
         await crudService.updateCustomer(editingCustomer.id, customerData);
@@ -91,9 +86,9 @@ export default function CustomersPage() {
 
       setIsModalOpen(false);
       fetchCustomers();
-    } catch (error) {
-      console.error('Error saving customer:', error);
-      alert('Erro ao salvar cliente. Verifique o console para mais detalhes.');
+    } catch (error: unknown) {
+      console.error('Erro ao salvar cliente:', error);
+      alert('Erro ao salvar cliente. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -104,15 +99,17 @@ export default function CustomersPage() {
     try {
       await crudService.deleteCustomer(id);
       fetchCustomers();
-    } catch (error) {
-      console.error('Error deleting customer:', error);
+    } catch (error: unknown) {
+      console.error('Erro ao excluir cliente:', error);
     }
   };
 
-  const filteredCustomers = customers.filter(c => 
+  const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.phone.includes(searchTerm)
   );
+
+  if (tenantLoading) return null;
 
   return (
     <div className="min-h-screen bg-[#E4E3E0] text-[#141414] font-sans p-8">
@@ -125,7 +122,7 @@ export default function CustomersPage() {
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={16} />
-            <input 
+            <input
               type="text"
               placeholder="Buscar cliente..."
               value={searchTerm}
@@ -133,7 +130,7 @@ export default function CustomersPage() {
               className="w-full pl-10 pr-4 py-3 bg-white border border-[#141414]/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
             />
           </div>
-          <button 
+          <button
             onClick={() => handleOpenModal()}
             className="bg-[#141414] text-[#E4E3E0] px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
           >
@@ -222,7 +219,7 @@ export default function CustomersPage() {
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
                       Nome Completo
                     </label>
-                    <input 
+                    <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -250,7 +247,7 @@ export default function CustomersPage() {
                       <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
                         <Mail size={12} /> Email
                       </label>
-                      <input 
+                      <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -264,7 +261,7 @@ export default function CustomersPage() {
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
                       Observações
                     </label>
-                    <textarea 
+                    <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"

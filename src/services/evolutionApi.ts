@@ -9,7 +9,14 @@ import { supabase } from '@/lib/supabase/client';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
-async function callProxy(action: string, instanceName?: string): Promise<any> {
+interface ApiResponse {
+  base64?: string;
+  code?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+async function callProxy(action: string, instanceName?: string): Promise<ApiResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Usuário não autenticado');
 

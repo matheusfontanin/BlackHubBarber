@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
@@ -38,12 +38,12 @@ export default function CalendarPage() {
   const { tenantId, loading: tenantLoading } = useTenant();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>('week');
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   // Form state
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -82,7 +82,7 @@ export default function CalendarPage() {
       setAppointments(apps);
       setCustomers(custs);
       setServices(servs);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Erro ao buscar dados da agenda:', err);
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ export default function CalendarPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const navigate = (direction: 'prev' | 'next') => {
+  const navigateDate = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       if (view === 'day') return direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1);
       if (view === 'week') return direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1);
@@ -110,7 +110,7 @@ export default function CalendarPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (app: any) => {
+  const openEditModal = (app: Appointment) => {
     setSelectedAppointment(app);
     setSelectedCustomer(app.client_id ?? '');
     setSelectedService(app.service_id ?? '');
@@ -147,7 +147,7 @@ export default function CalendarPage() {
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         status: 'scheduled' as AppointmentStatus,
-        notes: appointmentNotes || null,
+        notes: appointmentNotes || undefined,
         source: 'manual',
       };
 
@@ -159,8 +159,9 @@ export default function CalendarPage() {
 
       setIsModalOpen(false);
       fetchData();
-    } catch (err: any) {
-      setFormError(err.message || 'Erro ao salvar agendamento.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar agendamento.';
+      setFormError(message);
     } finally {
       setIsSaving(false);
     }
@@ -170,7 +171,7 @@ export default function CalendarPage() {
     try {
       await crudService.updateAppointment(id, { status });
       setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Erro ao atualizar status:', err);
     }
   };
@@ -213,13 +214,13 @@ export default function CalendarPage() {
 
             {/* Period navigation */}
             <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 border border-[#141414]/5 shadow-sm">
-              <button onClick={() => navigate('prev')} className="p-1 hover:bg-[#E4E3E0]/50 rounded transition-colors">
+              <button onClick={() => navigateDate('prev')} className="p-1 hover:bg-[#E4E3E0]/50 rounded transition-colors">
                 <ChevronLeft size={16} />
               </button>
               <span className="text-xs font-bold uppercase tracking-widest min-w-[160px] text-center capitalize">
                 {periodLabel()}
               </span>
-              <button onClick={() => navigate('next')} className="p-1 hover:bg-[#E4E3E0]/50 rounded transition-colors">
+              <button onClick={() => navigateDate('next')} className="p-1 hover:bg-[#E4E3E0]/50 rounded transition-colors">
                 <ChevronRight size={16} />
               </button>
             </div>
@@ -300,7 +301,7 @@ export default function CalendarPage() {
                         onClick={(e) => { e.stopPropagation(); openEditModal(app); }}
                         className={cn(
                           "absolute left-1 right-1 text-[#E4E3E0] p-2 rounded-lg shadow-lg z-10 overflow-hidden cursor-pointer border-l-4 transition-opacity",
-                          STATUS_COLORS[app.status as AppointmentStatus] ?? STATUS_COLORS.scheduled
+                          STATUS_COLORS[app.status] ?? STATUS_COLORS.scheduled
                         )}
                       >
                         <p className="text-[10px] font-bold truncate">{app.clients?.name}</p>
@@ -489,7 +490,7 @@ export default function CalendarPage() {
                         <button
                           key={s}
                           type="button"
-                          onClick={() => handleStatusChange(selectedAppointment.id, s)}
+                          onClick={() => selectedAppointment.id && handleStatusChange(selectedAppointment.id, s)}
                           className={cn(
                             "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg border-2 transition-all",
                             selectedAppointment.status === s

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { MessageSquare, CheckCircle2, RefreshCw, Loader2, Wifi } from 'lucide-react';
 import { buildInstanceName, createInstance, getQRCode, getConnectionState } from '@/services/evolutionApi';
+import { WhatsAppStepData } from '@/types/onboarding';
 
 interface WhatsAppStepProps {
   phone?: string;
-  onNext: (data?: { whatsappInstanceName?: string }) => void;
+  onNext: (data?: WhatsAppStepData) => void;
   onBack: () => void;
 }
 
@@ -57,9 +58,10 @@ export default function WhatsAppStep({ phone, onNext, onBack }: WhatsAppStepProp
           setErrorMsg('Tempo esgotado ao gerar QR Code. Tente novamente.');
         }
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : 'Erro ao conectar com a Evolution API.';
       setStatus('error');
-      setErrorMsg(err.message || 'Erro ao conectar com a Evolution API.');
+      setErrorMsg(error);
     }
   };
 
@@ -114,7 +116,7 @@ export default function WhatsAppStep({ phone, onNext, onBack }: WhatsAppStepProp
                 <div className="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center text-secondary shrink-0 mt-1">
                   <span className="text-xs font-bold">{i + 1}</span>
                 </div>
-                <p className="text-sm text-primary/70" dangerouslySetInnerHTML={{ __html: text }} />
+                <p className="text-sm text-primary/70">{text}</p>
               </div>
             ))}
           </div>

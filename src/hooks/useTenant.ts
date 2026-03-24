@@ -43,7 +43,7 @@ export function useTenant(): TenantInfo {
 
         if (dbError) throw dbError;
         setTenantId(data.tenant_id);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Erro ao carregar tenant:', err);
         setError('Não foi possível carregar os dados da barbearia.');
         setTenantId(null);

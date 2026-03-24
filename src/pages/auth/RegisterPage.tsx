@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Scissors, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
@@ -45,14 +45,13 @@ export default function RegisterPage() {
 
       // Senão, mostra mensagem de confirmação
       setSuccess(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : String(err);
       let message = 'Ocorreu um erro ao criar sua conta. Tente novamente.';
-      if (err.message?.includes('already registered')) {
+      if (error.includes('already registered')) {
         message = 'Este e-mail já está cadastrado. Tente fazer login.';
-      } else if (err.message?.includes('Password should be')) {
+      } else if (error.includes('Password should be')) {
         message = 'A senha deve ter pelo menos 6 caracteres.';
-      } else if (err.status === 429) {
-        message = 'Muitas tentativas. Por favor, aguarde um momento.';
       }
       setError(message);
     } finally {

@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Clock, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface DayHours {
-  day: string;
-  isOpen: boolean;
-  open: string;
-  close: string;
-}
+import { DayHours } from '@/types/onboarding';
 
 interface BusinessHoursStepProps {
   onNext: (hours: DayHours[]) => void;

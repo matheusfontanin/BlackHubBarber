@@ -1,12 +1,12 @@
-import React from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Users, 
-  Scissors, 
-  DollarSign, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Scissors,
+  DollarSign,
+  MessageSquare,
   LogOut,
   Menu,
   X
@@ -15,14 +15,22 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardLayout() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const { signOut } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, signOut, isDev } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
+
+  const displayName = user?.user_metadata?.full_name ?? (isDev ? 'Admin Dev' : 'Usuário');
+  const initials = displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -76,14 +84,16 @@ export default function DashboardLayout() {
         <div className="pt-6 border-t border-[#E4E3E0]/10 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-[#141414] font-bold">
-              JS
+              {initials}
             </div>
             <div>
-              <p className="text-sm font-bold">João Silva</p>
-              <p className="text-[10px] opacity-50 uppercase tracking-widest">Barbeiro Master</p>
+              <p className="text-sm font-bold">{displayName}</p>
+              <p className="text-[10px] opacity-50 uppercase tracking-widest">
+                {user?.email ?? 'dev@barberflow.com'}
+              </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
           >

@@ -3,18 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { IMaskInput } from 'react-imask';
 import { Scissors, Clock, DollarSign, Plus, Trash2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration: number; // in minutes
-}
+import { Service } from '@/types/onboarding';
 
 interface ServicesStepProps {
   onNext: (services: Service[]) => void;
   onBack: () => void;
 }
+
+// Nota: onNext recebe o array de serviços diretamente.
+// O OnboardingPage faz o wrap em { services: [...] }.
 
 const DEFAULT_SERVICES: Service[] = [
   { id: '1', name: 'Corte de Cabelo', price: 50, duration: 30 },
@@ -22,19 +19,28 @@ const DEFAULT_SERVICES: Service[] = [
   { id: '3', name: 'Corte & Barba', price: 70, duration: 50 },
 ];
 
+interface NewServiceInput {
+  name: string;
+  price: string;
+  duration: number;
+}
+
 export default function ServicesStep({ onNext, onBack }: ServicesStepProps) {
   const [services, setServices] = useState<Service[]>(DEFAULT_SERVICES);
   const [isAdding, setIsAdding] = useState(false);
-  const [newService, setNewService] = useState<any>({ name: '', price: '', duration: 30 });
+  const [newService, setNewService] = useState<NewServiceInput>({ name: '', price: '', duration: 30 });
 
-  const addService = () => {
-    if (newService.name && newService.price !== '' && newService.duration) {
+  const addService = (): void => {
+    if (newService.name && newService.price !== '' && newService.duration > 0) {
       // Clean price string to float
-      const cleanPrice = typeof newService.price === 'string' 
-        ? parseFloat(newService.price.replace(/[^\d.,]/g, '').replace(',', '.'))
-        : newService.price;
+      const cleanPrice = parseFloat(newService.price.replace(/[^\d.,]/g, '').replace(',', '.'));
 
-      setServices([...services, { ...newService, price: cleanPrice, id: Math.random().toString(36).substr(2, 9) } as Service]);
+      const service: Service = { 
+        ...newService,
+        price: cleanPrice, 
+        id: Math.random().toString(36).substr(2, 9) 
+      };
+      setServices([...services, service]);
       setNewService({ name: '', price: '', duration: 30 });
       setIsAdding(false);
     }

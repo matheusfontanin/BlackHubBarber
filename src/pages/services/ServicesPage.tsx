@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IMaskInput } from 'react-imask';
-import { 
-  Plus, 
-  Search, 
-  Scissors, 
-  Clock, 
-  DollarSign, 
-  Edit2, 
-  Trash2, 
-  X, 
+import {
+  Plus,
+  Search,
+  Scissors,
+  Clock,
+  DollarSign,
+  Edit2,
+  Trash2,
+  X,
   Check,
   Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { crudService, Service } from '@/services/crudService';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/hooks/useTenant';
 
 export default function ServicesPage() {
+  const { tenantId, loading: tenantLoading } = useTenant();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Form State
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -31,20 +32,18 @@ export default function ServicesPage() {
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const { isDev } = useAuth();
-  const tenantId = '00000000-0000-0000-0000-000000000000';
-
   useEffect(() => {
-    fetchServices();
-  }, []);
+    if (tenantId) fetchServices();
+  }, [tenantId]);
 
   const fetchServices = async () => {
+    if (!tenantId) return;
     setLoading(true);
     try {
       const data = await crudService.getServices(tenantId);
       setServices(data);
-    } catch (error) {
-      console.error('Error fetching services:', error);
+    } catch (error: unknown) {
+      console.error('Erro ao buscar serviços:', error);
     } finally {
       setLoading(false);
     }
@@ -55,7 +54,7 @@ export default function ServicesPage() {
       setEditingService(service);
       setName(service.name);
       setPrice(service.price.toString());
-      setDuration(service.duration.toString());
+      setDuration(service.duration_minutes.toString());
       setDescription(service.description || '');
     } else {
       setEditingService(null);
@@ -69,20 +68,18 @@ export default function ServicesPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
     setIsSaving(true);
     try {
-      // Clean price string to float
       const cleanPrice = parseFloat(price.replace(/[^\d.,]/g, '').replace(',', '.'));
-      
+
       const serviceData = {
         name,
         price: cleanPrice,
-        duration: parseInt(duration),
+        duration_minutes: parseInt(duration),
         description,
-        tenant_id: tenantId
+        tenant_id: tenantId,
       };
-
-      console.log('Saving service:', serviceData);
 
       if (editingService?.id) {
         await crudService.updateService(editingService.id, serviceData);
@@ -92,9 +89,9 @@ export default function ServicesPage() {
 
       setIsModalOpen(false);
       fetchServices();
-    } catch (error) {
-      console.error('Error saving service:', error);
-      alert('Erro ao salvar serviço. Verifique o console para mais detalhes.');
+    } catch (error: unknown) {
+      console.error('Erro ao salvar serviço:', error);
+      alert('Erro ao salvar serviço. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -105,14 +102,16 @@ export default function ServicesPage() {
     try {
       await crudService.deleteService(id);
       fetchServices();
-    } catch (error) {
-      console.error('Error deleting service:', error);
+    } catch (error: unknown) {
+      console.error('Erro ao excluir serviço:', error);
     }
   };
 
-  const filteredServices = services.filter(s => 
+  const filteredServices = services.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (tenantLoading) return null;
 
   return (
     <div className="min-h-screen bg-[#E4E3E0] text-[#141414] font-sans p-8">
@@ -125,7 +124,7 @@ export default function ServicesPage() {
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={16} />
-            <input 
+            <input
               type="text"
               placeholder="Buscar serviço..."
               value={searchTerm}
@@ -133,7 +132,7 @@ export default function ServicesPage() {
               className="w-full pl-10 pr-4 py-3 bg-white border border-[#141414]/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
             />
           </div>
-          <button 
+          <button
             onClick={() => handleOpenModal()}
             className="bg-[#141414] text-[#E4E3E0] px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
           >
@@ -165,16 +164,16 @@ export default function ServicesPage() {
                   <button onClick={() => service.id && handleDelete(service.id)} className="p-2 hover:bg-[#E4E3E0]/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
                 </div>
               </div>
-              
+
               <h3 className="font-serif italic text-xl mb-1">{service.name}</h3>
               <p className="text-xs opacity-50 mb-4 line-clamp-2">{service.description || 'Sem descrição.'}</p>
-              
+
               <div className="flex items-center justify-between pt-4 border-t border-[#141414]/5">
                 <div className="flex items-center gap-2 text-xs font-mono font-bold opacity-60">
-                  <Clock size={14} /> {service.duration} min
+                  <Clock size={14} /> {service.duration_minutes} min
                 </div>
                 <div className="text-lg font-mono font-bold text-secondary">
-                  R$ {service.price}
+                  R$ {Number(service.price).toFixed(2)}
                 </div>
               </div>
             </motion.div>
@@ -208,7 +207,7 @@ export default function ServicesPage() {
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
                       Nome do Serviço
                     </label>
-                    <input 
+                    <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -247,7 +246,7 @@ export default function ServicesPage() {
                       <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
                         <Clock size={12} /> Duração (min)
                       </label>
-                      <input 
+                      <input
                         type="number"
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
@@ -262,7 +261,7 @@ export default function ServicesPage() {
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
                       Descrição (Opcional)
                     </label>
-                    <textarea 
+                    <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import OnboardingLayout from '@/layouts/OnboardingLayout';
 import { Scissors, MessageSquare, LayoutDashboard, ArrowRight, Loader2 } from 'lucide-react';
 import BarbershopInfoStep from '@/components/onboarding/BarbershopInfoStep';
@@ -8,16 +8,35 @@ import BusinessHoursStep from '@/components/onboarding/BusinessHoursStep';
 import WhatsAppStep from '@/components/onboarding/WhatsAppStep';
 import CalendarStep from '@/components/onboarding/CalendarStep';
 import FinalStep from '@/components/onboarding/FinalStep';
-import { saveOnboardingData } from '@/services/onboardingService';
+import { saveOnboardingData, OnboardingData } from '@/services/onboardingService';
+import type { BarbershopFormData, Service, DayHours, WhatsAppStepData, CalendarStepData } from '@/types/onboarding';
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Partial<OnboardingData>>({});
   const [isSaving, setIsSaving] = useState(false);
   const totalSteps = 7;
 
-  const nextStep = (data?: any) => {
-    if (data) setFormData((prev: any) => ({ ...prev, ...data }));
+  const nextStep = (data?: BarbershopFormData | Service[] | DayHours[] | WhatsAppStepData | CalendarStepData) => {
+    if (data) {
+      setFormData(prev => {
+        if (Array.isArray(data)) {
+          // Services or BusinessHours
+          if (data.length > 0 && 'duration' in data[0]) {
+            return { ...prev, services: data as Service[] };
+          } else if (data.length > 0 && 'isOpen' in data[0]) {
+            return { ...prev, businessHours: data as DayHours[] };
+          }
+        } else if ('name' in data && 'ownerName' in data) {
+          // BarbershopFormData
+          return { ...prev, ...data as BarbershopFormData };
+        } else if ('whatsappInstanceName' in data || 'googleCalendarConnected' in data) {
+          // WhatsAppStepData or CalendarStepData
+          return { ...prev, ...data };
+        }
+        return prev;
+      });
+    }
     setStep(s => Math.min(s + 1, totalSteps));
   };
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
@@ -25,14 +44,14 @@ export default function OnboardingPage() {
   const handleComplete = async () => {
     setIsSaving(true);
     try {
-      const result = await saveOnboardingData(formData);
+      const result = await saveOnboardingData(formData as OnboardingData);
       if (result.success) {
         window.location.href = '/dashboard';
       } else {
-        alert('Erro ao salvar dados. Verifique o console.');
+        alert('Erro ao salvar dados. Tente novamente.');
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      console.error('Erro no onboarding:', error);
     } finally {
       setIsSaving(false);
     }
@@ -107,11 +126,11 @@ export default function OnboardingPage() {
             )}
 
             {step === 3 && (
-              <ServicesStep onNext={nextStep} onBack={prevStep} />
+              <ServicesStep onNext={(services) => nextStep({ services })} onBack={prevStep} />
             )}
 
             {step === 4 && (
-              <BusinessHoursStep onNext={nextStep} onBack={prevStep} />
+              <BusinessHoursStep onNext={(businessHours) => nextStep({ businessHours })} onBack={prevStep} />
             )}
 
             {step === 5 && (

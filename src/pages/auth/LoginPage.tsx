@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Scissors, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
@@ -19,8 +19,8 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // Dev Login Bypass
-    if (email === 'admin' && password === '1234') {
+    // Dev Login Bypass (apenas em desenvolvimento local)
+    if (import.meta.env.DEV && email === 'admin' && password === '1234') {
       setDevMode(true);
       navigate('/dashboard');
       return;
@@ -34,17 +34,18 @@ export default function LoginPage() {
 
       if (error) throw error;
       navigate('/dashboard');
-    } catch (err: any) {
-      console.error('Login error:', err);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error('Login error:', error);
       
       // Improved error messages in Portuguese
       let message = 'Ocorreu um erro ao acessar sua conta. Tente novamente.';
       
-      if (err.message === 'Invalid login credentials' || err.status === 400) {
+      if (error.message === 'Invalid login credentials') {
         message = 'Usuário ou senha incorretos. Verifique seus dados e tente novamente.';
-      } else if (err.message === 'Email not confirmed') {
+      } else if (error.message === 'Email not confirmed') {
         message = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.';
-      } else if (err.status === 429) {
+      } else if ('status' in error && (error as { status: number }).status === 429) {
         message = 'Muitas tentativas de login. Por favor, aguarde um momento.';
       }
       
