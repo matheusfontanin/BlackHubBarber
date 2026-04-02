@@ -19,7 +19,6 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // Dev Login Bypass (apenas em desenvolvimento local)
     if (import.meta.env.DEV && email === 'admin' && password === '1234') {
       setDevMode(true);
       navigate('/dashboard');
@@ -27,28 +26,19 @@ export default function LoginPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate('/dashboard');
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
-      console.error('Login error:', error);
-      
-      // Improved error messages in Portuguese
       let message = 'Ocorreu um erro ao acessar sua conta. Tente novamente.';
-      
       if (error.message === 'Invalid login credentials') {
-        message = 'Usuário ou senha incorretos. Verifique seus dados e tente novamente.';
+        message = 'Usuario ou senha incorretos. Verifique seus dados e tente novamente.';
       } else if (error.message === 'Email not confirmed') {
-        message = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.';
+        message = 'Seu e-mail ainda nao foi confirmado. Verifique sua caixa de entrada.';
       } else if ('status' in error && (error as { status: number }).status === 429) {
         message = 'Muitas tentativas de login. Por favor, aguarde um momento.';
       }
-      
       setError(message);
     } finally {
       setLoading(false);
@@ -56,94 +46,111 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E4E3E0] flex items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-primary flex items-center justify-center p-6 font-sans relative overflow-hidden">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+        backgroundSize: '32px 32px'
+      }} />
+
+      {/* Glow effect */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-secondary/10 rounded-full blur-[120px]" />
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-[#141414]/5 overflow-hidden"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-[420px] relative z-10"
       >
-        <div className="bg-[#141414] p-8 text-center space-y-4">
-          <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto text-[#141414]">
-            <Scissors size={32} />
-          </div>
-          <h1 className="text-2xl font-serif italic text-[#E4E3E0]">BarberFlow</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#E4E3E0]/50 font-bold">
-            Acesse seu painel de controle
-          </p>
+        {/* Logo + Title */}
+        <div className="text-center mb-8">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="w-16 h-16 bg-gradient-to-br from-secondary to-accent rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-secondary/20"
+          >
+            <Scissors size={28} className="text-primary" />
+          </motion.div>
+          <h1 className="text-3xl font-serif italic text-white mb-2">BlackHub</h1>
+          <p className="text-sm text-white/30">Acesse seu painel de controle</p>
         </div>
 
-        <form onSubmit={handleLogin} className="p-8 space-y-6">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-lg text-center"
-            >
-              {error}
-            </motion.div>
-          )}
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
+          <form onSubmit={handleLogin} className="p-7 space-y-5">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3.5 bg-red-50 border border-red-100 text-red-600 text-xs font-semibold rounded-xl text-center"
+              >
+                {error}
+              </motion.div>
+            )}
 
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                <User size={12} /> Email ou Usuário
-              </label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
-                placeholder="ex: admin"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                <Lock size={12} /> Senha
-              </label>
-              <div className="relative">
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-primary/40 flex items-center gap-1.5 mb-2">
+                  <User size={13} /> Email ou Usuario
+                </label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono pr-12"
-                  placeholder="••••"
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-primary/[0.03] border border-primary/10 focus:border-secondary focus:ring-2 focus:ring-secondary/10 rounded-xl outline-none transition-all text-sm"
+                  placeholder="admin"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#141414]/30 hover:text-secondary transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-primary/40 flex items-center gap-1.5 mb-2">
+                  <Lock size={13} /> Senha
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-primary/[0.03] border border-primary/10 focus:border-secondary focus:ring-2 focus:ring-secondary/10 rounded-xl outline-none transition-all text-sm pr-12"
+                    placeholder="••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primary/20 hover:text-secondary transition-colors p-1"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-[#141414] text-[#E4E3E0] rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : (
-              <>
-                Entrar no Sistema
-                <ArrowRight size={18} />
-              </>
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="animate-spin" size={18} /> : (
+                <>Entrar <ArrowRight size={16} /></>
+              )}
+            </button>
 
-          <div className="pt-4 text-center">
-            <p className="text-[10px] opacity-30 uppercase tracking-widest font-bold">
-              Não tem uma conta?{' '}
-              <Link to="/register" className="text-secondary cursor-pointer hover:underline">
+            <p className="text-center text-xs text-primary/30 pt-1">
+              Nao tem uma conta?{' '}
+              <Link to="/register" className="text-secondary font-semibold hover:underline">
                 Cadastre sua barbearia
               </Link>
             </p>
-          </div>
-        </form>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-[10px] text-white/15 mt-8 uppercase tracking-[0.2em] font-medium">
+          BlackHub Barber &mdash; Powered by AI
+        </p>
       </motion.div>
     </div>
   );

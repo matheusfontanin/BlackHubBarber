@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
 };
 
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  scheduled: 'border-secondary bg-[#141414]',
+  scheduled: 'border-secondary bg-primary',
   confirmed: 'border-green-400 bg-green-900',
   cancelled: 'border-red-400 bg-red-900 opacity-60',
   finished: 'border-primary/40 bg-primary/60',
@@ -194,18 +194,18 @@ export default function CalendarPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="min-h-screen bg-[#E4E3E0] text-[#141414] font-sans p-6 md:p-8">
+    <div className="min-h-screen bg-bg text-primary font-sans p-6 md:p-8">
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="space-y-3">
           <h1 className="text-4xl font-serif italic">Agenda</h1>
           <div className="flex flex-wrap items-center gap-3">
             {/* View toggle */}
-            <div className="flex bg-white rounded-lg p-1 border border-[#141414]/5 shadow-sm">
+            <div className="flex bg-white rounded-lg p-1 border border-primary/5 shadow-sm">
               {(['day', 'week', 'month'] as View[]).map(v => (
                 <button key={v} onClick={() => setView(v)}
                   className={cn("px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded transition-all",
-                    view === v ? "bg-[#141414] text-[#E4E3E0]" : "opacity-40 hover:opacity-70")}
+                    view === v ? "bg-primary text-bg" : "opacity-40 hover:opacity-70")}
                 >
                   {v === 'day' ? 'Dia' : v === 'week' ? 'Semana' : 'Mês'}
                 </button>
@@ -213,20 +213,20 @@ export default function CalendarPage() {
             </div>
 
             {/* Period navigation */}
-            <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 border border-[#141414]/5 shadow-sm">
-              <button onClick={() => navigateDate('prev')} className="p-1 hover:bg-[#E4E3E0]/50 rounded transition-colors">
+            <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 border border-primary/5 shadow-sm">
+              <button onClick={() => navigateDate('prev')} className="p-1 hover:bg-bg/50 rounded transition-colors">
                 <ChevronLeft size={16} />
               </button>
               <span className="text-xs font-bold uppercase tracking-widest min-w-[160px] text-center capitalize">
                 {periodLabel()}
               </span>
-              <button onClick={() => navigateDate('next')} className="p-1 hover:bg-[#E4E3E0]/50 rounded transition-colors">
+              <button onClick={() => navigateDate('next')} className="p-1 hover:bg-bg/50 rounded transition-colors">
                 <ChevronRight size={16} />
               </button>
             </div>
 
             <button onClick={() => { setCurrentDate(new Date()); }}
-              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-white rounded-lg border border-[#141414]/5 shadow-sm opacity-50 hover:opacity-100 transition-opacity">
+              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-white rounded-lg border border-primary/5 shadow-sm opacity-50 hover:opacity-100 transition-opacity">
               Hoje
             </button>
           </div>
@@ -234,7 +234,7 @@ export default function CalendarPage() {
 
         <button
           onClick={() => openNewModal()}
-          className="bg-[#141414] text-[#E4E3E0] px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+          className="bg-primary text-bg px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform"
         >
           <Plus size={18} /> Novo Agendamento
         </button>
@@ -242,12 +242,12 @@ export default function CalendarPage() {
 
       {/* Calendar Grid (Day/Week view) */}
       {(view === 'day' || view === 'week') && (
-        <div className="bg-white rounded-2xl border border-[#141414]/5 shadow-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-primary/5 shadow-xl overflow-hidden">
           {/* Day Headers */}
-          <div className={cn("grid border-b border-[#141414]/5", view === 'week' ? 'grid-cols-8' : 'grid-cols-2')}>
-            <div className="p-4 border-r border-[#141414]/5 bg-[#E4E3E0]/20" />
+          <div className={cn("grid border-b border-primary/5", view === 'week' ? 'grid-cols-8' : 'grid-cols-2')}>
+            <div className="p-4 border-r border-primary/5 bg-bg/20" />
             {(view === 'week' ? weekDays : [currentDate]).map(day => (
-              <div key={day.toString()} className={cn("p-4 text-center border-r border-[#141414]/5 last:border-r-0", isToday(day) && "bg-secondary/5")}>
+              <div key={day.toString()} className={cn("p-4 text-center border-r border-primary/5 last:border-r-0", isToday(day) && "bg-secondary/5")}>
                 <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-1">
                   {format(day, 'EEE', { locale: ptBR })}
                 </p>
@@ -261,9 +261,9 @@ export default function CalendarPage() {
           {/* Time Grid */}
           <div className={cn("grid h-[640px] overflow-y-auto relative", view === 'week' ? 'grid-cols-8' : 'grid-cols-2')}>
             {/* Hours */}
-            <div className="border-r border-[#141414]/5 bg-[#E4E3E0]/10">
+            <div className="border-r border-primary/5 bg-bg/10">
               {HOURS.map(hour => (
-                <div key={hour} className="h-20 p-2 text-right border-b border-[#141414]/5">
+                <div key={hour} className="h-20 p-2 text-right border-b border-primary/5">
                   <span className="text-[10px] font-mono font-bold opacity-30">{hour}:00</span>
                 </div>
               ))}
@@ -271,12 +271,12 @@ export default function CalendarPage() {
 
             {/* Day columns */}
             {(view === 'week' ? weekDays : [currentDate]).map(day => (
-              <div key={day.toString()} className="relative border-r border-[#141414]/5 last:border-r-0">
+              <div key={day.toString()} className="relative border-r border-primary/5 last:border-r-0">
                 {HOURS.map(hour => (
                   <div
                     key={hour}
                     onClick={() => openNewModal(day, hour)}
-                    className="h-20 border-b border-[#141414]/5 hover:bg-secondary/5 transition-colors cursor-pointer group"
+                    className="h-20 border-b border-primary/5 hover:bg-secondary/5 transition-colors cursor-pointer group"
                   >
                     <div className="opacity-0 group-hover:opacity-100 p-2 flex justify-end">
                       <Plus size={12} className="text-secondary" />
@@ -300,7 +300,7 @@ export default function CalendarPage() {
                         style={{ top: `${top}px`, height: `${height}px` }}
                         onClick={(e) => { e.stopPropagation(); openEditModal(app); }}
                         className={cn(
-                          "absolute left-1 right-1 text-[#E4E3E0] p-2 rounded-lg shadow-lg z-10 overflow-hidden cursor-pointer border-l-4 transition-opacity",
+                          "absolute left-1 right-1 text-bg p-2 rounded-lg shadow-lg z-10 overflow-hidden cursor-pointer border-l-4 transition-opacity",
                           STATUS_COLORS[app.status] ?? STATUS_COLORS.scheduled
                         )}
                       >
@@ -318,11 +318,11 @@ export default function CalendarPage() {
 
       {/* Month View */}
       {view === 'month' && (
-        <div className="bg-white rounded-2xl border border-[#141414]/5 shadow-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-primary/5 shadow-xl overflow-hidden">
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 border-b border-[#141414]/5">
+          <div className="grid grid-cols-7 border-b border-primary/5">
             {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
-              <div key={d} className="p-3 text-center text-[10px] font-bold uppercase tracking-widest opacity-40 border-r last:border-r-0 border-[#141414]/5">
+              <div key={d} className="p-3 text-center text-[10px] font-bold uppercase tracking-widest opacity-40 border-r last:border-r-0 border-primary/5">
                 {d}
               </div>
             ))}
@@ -337,7 +337,7 @@ export default function CalendarPage() {
             for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
             return weeks.map((week, wi) => (
-              <div key={wi} className="grid grid-cols-7 border-b border-[#141414]/5 last:border-b-0">
+              <div key={wi} className="grid grid-cols-7 border-b border-primary/5 last:border-b-0">
                 {week.map(day => {
                   const dayApps = appointments.filter(a => isSameDay(parseISO(a.start_time), day));
                   const inMonth = day.getMonth() === currentDate.getMonth();
@@ -346,7 +346,7 @@ export default function CalendarPage() {
                       key={day.toString()}
                       onClick={() => { setCurrentDate(day); setView('day'); }}
                       className={cn(
-                        "min-h-[90px] p-2 border-r last:border-r-0 border-[#141414]/5 cursor-pointer hover:bg-secondary/5 transition-colors",
+                        "min-h-[90px] p-2 border-r last:border-r-0 border-primary/5 cursor-pointer hover:bg-secondary/5 transition-colors",
                         !inMonth && "opacity-30",
                         isToday(day) && "bg-secondary/5"
                       )}
@@ -354,7 +354,7 @@ export default function CalendarPage() {
                       <p className={cn("text-sm font-mono font-bold mb-1", isToday(day) && "text-secondary")}>{format(day, 'd')}</p>
                       <div className="space-y-0.5">
                         {dayApps.slice(0, 3).map(app => (
-                          <p key={app.id} className="text-[9px] font-bold bg-[#141414] text-[#E4E3E0] rounded px-1 truncate">
+                          <p key={app.id} className="text-[9px] font-bold bg-primary text-bg rounded px-1 truncate">
                             {format(parseISO(app.start_time), 'HH:mm')} {app.clients?.name}
                           </p>
                         ))}
@@ -380,14 +380,14 @@ export default function CalendarPage() {
       {/* Modal Agendamento */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-[#141414]/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
             >
-              <div className="bg-[#141414] p-6 text-[#E4E3E0] flex justify-between items-center">
+              <div className="bg-primary p-6 text-bg flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <CalendarIcon className="text-secondary" size={20} />
                   <h3 className="font-serif italic text-xl">
@@ -414,7 +414,7 @@ export default function CalendarPage() {
                   <select
                     value={selectedCustomer}
                     onChange={e => setSelectedCustomer(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
+                    className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
                     required
                   >
                     <option value="">Selecione um cliente</option>
@@ -429,7 +429,7 @@ export default function CalendarPage() {
                   <select
                     value={selectedService}
                     onChange={e => setSelectedService(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
+                    className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
                     required
                   >
                     <option value="">Selecione um serviço</option>
@@ -450,7 +450,7 @@ export default function CalendarPage() {
                       type="date"
                       value={appointmentDate}
                       onChange={e => setAppointmentDate(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
                       required
                     />
                   </div>
@@ -462,7 +462,7 @@ export default function CalendarPage() {
                       type="time"
                       value={appointmentTime}
                       onChange={e => setAppointmentTime(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
                       required
                     />
                   </div>
@@ -476,7 +476,7 @@ export default function CalendarPage() {
                     value={appointmentNotes}
                     onChange={e => setAppointmentNotes(e.target.value)}
                     rows={2}
-                    className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm resize-none"
+                    className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm resize-none"
                     placeholder="Ex: Prefere tesoura, alergia a produto X..."
                   />
                 </div>
@@ -508,7 +508,7 @@ export default function CalendarPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-4 bg-[#141414] text-[#E4E3E0] rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-primary text-bg rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
                   {isSaving
                     ? <Loader2 className="animate-spin" size={18} />

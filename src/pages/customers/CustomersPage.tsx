@@ -112,7 +112,7 @@ export default function CustomersPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="min-h-screen bg-[#E4E3E0] text-[#141414] font-sans p-8">
+    <div className="min-h-screen bg-bg text-primary font-sans p-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
           <h1 className="text-4xl font-serif italic mb-2">Clientes</h1>
@@ -127,12 +127,12 @@ export default function CustomersPage() {
               placeholder="Buscar cliente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-[#141414]/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
+              className="w-full pl-10 pr-4 py-3 bg-white border border-primary/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
             />
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="bg-[#141414] text-[#E4E3E0] px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
+            className="bg-primary text-bg px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
           >
             <Plus size={18} /> Novo Cliente
           </button>
@@ -144,19 +144,19 @@ export default function CustomersPage() {
           <Loader2 className="animate-spin text-secondary" size={40} />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#141414]/5 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-primary/5 shadow-sm overflow-hidden">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-[#E4E3E0]/30 text-[10px] uppercase tracking-widest font-bold text-[#141414]/50">
+              <tr className="bg-bg/30 text-[10px] uppercase tracking-widest font-bold text-primary/50">
                 <th className="px-6 py-4">Nome</th>
                 <th className="px-6 py-4">Contato</th>
                 <th className="px-6 py-4">Notas</th>
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#141414]/5">
+            <tbody className="divide-y divide-primary/5">
               {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-[#E4E3E0]/20 transition-colors group">
+                <tr key={customer.id} className="hover:bg-bg/20 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-xs">
@@ -182,8 +182,8 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleOpenModal(customer)} className="p-2 hover:bg-[#E4E3E0]/50 rounded transition-colors text-blue-600"><Edit2 size={16}/></button>
-                      <button onClick={() => customer.id && handleDelete(customer.id)} className="p-2 hover:bg-[#E4E3E0]/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
+                      <button onClick={() => handleOpenModal(customer)} className="p-2 hover:bg-bg/50 rounded transition-colors text-blue-600"><Edit2 size={16}/></button>
+                      <button onClick={() => customer.id && handleDelete(customer.id)} className="p-2 hover:bg-bg/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
                     </div>
                   </td>
                 </tr>
@@ -196,14 +196,14 @@ export default function CustomersPage() {
       {/* Modal Novo/Editar Cliente */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-[#141414]/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
             >
-              <div className="bg-[#141414] p-6 text-[#E4E3E0] flex justify-between items-center">
+              <div className="bg-primary p-6 text-bg flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <Users className="text-secondary" size={20} />
                   <h3 className="font-serif italic text-xl">{editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</h3>
@@ -223,7 +223,7 @@ export default function CustomersPage() {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
+                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
                       placeholder="ex: João Silva"
                       required
                     />
@@ -238,7 +238,7 @@ export default function CustomersPage() {
                         mask="(00) 00000-0000"
                         value={phone}
                         onAccept={(value: string) => setPhone(value)}
-                        className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
                         placeholder="(00) 00000-0000"
                         required
                       />
@@ -251,7 +251,7 @@ export default function CustomersPage() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
                         placeholder="ex@email.com"
                       />
                     </div>
@@ -264,7 +264,7 @@ export default function CustomersPage() {
                     <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"
+                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"
                       placeholder="Preferências, alergias, etc..."
                     />
                   </div>
@@ -273,7 +273,7 @@ export default function CustomersPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-4 bg-[#141414] text-[#E4E3E0] rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-primary text-bg rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : (
                     <>

@@ -17,7 +17,7 @@ export default function OnboardingLayout({ children, currentStep, totalSteps }: 
       <div className="fixed top-0 left-0 w-full z-50 bg-bg/80 backdrop-blur-md border-b border-primary/5">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-serif italic text-xl text-secondary">BarberFlow</span>
+            <span className="font-serif italic text-xl text-secondary">BlackHub</span>
           </div>
           
           <div className="flex items-center gap-4 flex-1 max-w-xs ml-8">
@@ -46,7 +46,7 @@ export default function OnboardingLayout({ children, currentStep, totalSteps }: 
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-primary/5">
         <div className="max-w-4xl mx-auto flex justify-center items-center gap-2 opacity-40">
-          <span className="font-serif italic text-sm text-primary">BarberFlow</span>
+          <span className="font-serif italic text-sm text-primary">BlackHub</span>
           <span className="w-1 h-1 rounded-full bg-primary/50" />
           <p className="text-[10px] uppercase tracking-[0.2em]">Crafting Digital Experiences</p>
         </div>

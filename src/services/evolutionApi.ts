@@ -39,7 +39,7 @@ async function callProxy(action: string, instanceName?: string): Promise<ApiResp
 }
 
 export function buildInstanceName(phone: string): string {
-  return `barberflow_${phone.replace(/\D/g, '')}`;
+  return `blackhub_${phone.replace(/\D/g, '')}`;
 }
 
 export async function createInstance(instanceName: string): Promise<void> {

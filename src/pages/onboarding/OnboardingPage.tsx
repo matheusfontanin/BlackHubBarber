@@ -86,7 +86,7 @@ export default function OnboardingPage() {
                     <Scissors size={40} />
                   </div>
                   <h1 className="text-4xl md:text-5xl font-serif text-primary">
-                    Bem-vindo ao BarberFlow
+                    Bem-vindo ao BlackHub Barber
                   </h1>
                   <p className="text-xl text-primary/60 max-w-lg mx-auto">
                     Vamos configurar sua barbearia em menos de 5 minutos.

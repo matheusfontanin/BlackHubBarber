@@ -66,7 +66,7 @@ export default function CalendarStep({ onNext, onBack }: CalendarStepProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         <div className="space-y-6">
           <p className="text-sm text-primary/70 leading-relaxed">
-            O BarberFlow lê sua disponibilidade em tempo real e insere novos agendamentos automaticamente na sua agenda pessoal ou profissional.
+            O BlackHub Barber lê sua disponibilidade em tempo real e insere novos agendamentos automaticamente na sua agenda pessoal ou profissional.
           </p>
 
           <div className="space-y-3">

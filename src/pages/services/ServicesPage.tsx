@@ -114,7 +114,7 @@ export default function ServicesPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="min-h-screen bg-[#E4E3E0] text-[#141414] font-sans p-8">
+    <div className="min-h-screen bg-bg text-primary font-sans p-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
           <h1 className="text-4xl font-serif italic mb-2">Serviços</h1>
@@ -129,12 +129,12 @@ export default function ServicesPage() {
               placeholder="Buscar serviço..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-[#141414]/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
+              className="w-full pl-10 pr-4 py-3 bg-white border border-primary/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
             />
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="bg-[#141414] text-[#E4E3E0] px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
+            className="bg-primary text-bg px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
           >
             <Plus size={18} /> Novo Serviço
           </button>
@@ -153,22 +153,22 @@ export default function ServicesPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white p-6 rounded-xl border border-[#141414]/5 shadow-sm group hover:shadow-md transition-all"
+              className="bg-white p-6 rounded-xl border border-primary/5 shadow-sm group hover:shadow-md transition-all"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-secondary/10 text-secondary rounded-lg">
                   <Scissors size={24} />
                 </div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleOpenModal(service)} className="p-2 hover:bg-[#E4E3E0]/50 rounded transition-colors text-blue-600"><Edit2 size={16}/></button>
-                  <button onClick={() => service.id && handleDelete(service.id)} className="p-2 hover:bg-[#E4E3E0]/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
+                  <button onClick={() => handleOpenModal(service)} className="p-2 hover:bg-bg/50 rounded transition-colors text-blue-600"><Edit2 size={16}/></button>
+                  <button onClick={() => service.id && handleDelete(service.id)} className="p-2 hover:bg-bg/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
                 </div>
               </div>
 
               <h3 className="font-serif italic text-xl mb-1">{service.name}</h3>
               <p className="text-xs opacity-50 mb-4 line-clamp-2">{service.description || 'Sem descrição.'}</p>
 
-              <div className="flex items-center justify-between pt-4 border-t border-[#141414]/5">
+              <div className="flex items-center justify-between pt-4 border-t border-primary/5">
                 <div className="flex items-center gap-2 text-xs font-mono font-bold opacity-60">
                   <Clock size={14} /> {service.duration_minutes} min
                 </div>
@@ -184,14 +184,14 @@ export default function ServicesPage() {
       {/* Modal Novo/Editar Serviço */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-[#141414]/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
             >
-              <div className="bg-[#141414] p-6 text-[#E4E3E0] flex justify-between items-center">
+              <div className="bg-primary p-6 text-bg flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <Scissors className="text-secondary" size={20} />
                   <h3 className="font-serif italic text-xl">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h3>
@@ -211,7 +211,7 @@ export default function ServicesPage() {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
+                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
                       placeholder="ex: Corte Degradê"
                       required
                     />
@@ -237,7 +237,7 @@ export default function ServicesPage() {
                         }}
                         value={price}
                         onAccept={(value: string) => setPrice(value)}
-                        className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
                         placeholder="R$ 0,00"
                         required
                       />
@@ -250,7 +250,7 @@ export default function ServicesPage() {
                         type="number"
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
-                        className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
+                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
                         placeholder="30"
                         required
                       />
@@ -264,7 +264,7 @@ export default function ServicesPage() {
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#E4E3E0]/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"
+                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"
                       placeholder="Detalhes sobre o serviço..."
                     />
                   </div>
@@ -273,7 +273,7 @@ export default function ServicesPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-4 bg-[#141414] text-[#E4E3E0] rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-primary text-bg rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : (
                     <>
