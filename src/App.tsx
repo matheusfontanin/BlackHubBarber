@@ -7,6 +7,7 @@ import DashboardPage from '@/pages/dashboard/DashboardPage';
 import CalendarPage from '@/pages/calendar/CalendarPage';
 import ServicesPage from '@/pages/services/ServicesPage';
 import CustomersPage from '@/pages/customers/CustomersPage';
+import SettingsPage from '@/pages/settings/SettingsPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import DashboardLayout from '@/layouts/DashboardLayout';
@@ -68,8 +69,9 @@ export default function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/customers" element={<CustomersPage />} />
-            <Route path="/ia" element={<div className="p-8"><h1 className="text-4xl font-serif italic">Atendimento IA (Em breve)</h1></div>} />
-            <Route path="/finance" element={<div className="p-8"><h1 className="text-4xl font-serif italic">Financeiro (Em breve)</h1></div>} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/ia" element={<div className="p-8"><h1 className="text-4xl font-heading font-medium tracking-tight">Atendimento IA (Em breve)</h1></div>} />
+            <Route path="/finance" element={<div className="p-8"><h1 className="text-4xl font-heading font-medium tracking-tight">Financeiro (Em breve)</h1></div>} />
           </Route>
 
           {/* Redirects */}

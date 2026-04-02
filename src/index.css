@@ -1,24 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "DM Serif Display", serif;
+  --font-heading: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-primary: #1A1A2E;
-  --color-secondary: #C4A35A;
-  --color-accent: #E8B04A;
-  --color-bg: #FAFAF8;
+  --color-appbg: #576d78;
+  --color-primary: #1e293b;
+  --color-secondary: #4a8fa3;
+  --color-accent: #f8cbb4;
+  --color-bg: #f8fafc;
 }
 
 @layer base {
   body {
-    @apply bg-bg text-primary font-sans antialiased;
+    @apply bg-appbg text-primary font-sans antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
+    @apply font-heading tracking-tight;
   }
 }
 

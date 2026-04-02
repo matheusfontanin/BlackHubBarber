@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Scissors, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
@@ -72,7 +72,7 @@ export default function LoginPage() {
           >
             <Scissors size={28} className="text-primary" />
           </motion.div>
-          <h1 className="text-3xl font-serif italic text-white mb-2">BlackHub</h1>
+          <h1 className="text-3xl font-heading font-bold text-white mb-2">BlackHub</h1>
           <p className="text-sm text-white/30">Acesse seu painel de controle</p>
         </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IMaskInput } from 'react-imask';
 import {
@@ -115,7 +115,7 @@ export default function CustomersPage() {
     <div className="min-h-screen bg-bg text-primary font-sans p-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
-          <h1 className="text-4xl font-serif italic mb-2">Clientes</h1>
+          <h1 className="text-4xl font-heading font-medium tracking-tight mb-2">Clientes</h1>
           <p className="text-[10px] opacity-50 uppercase tracking-[0.2em] font-mono font-bold">Gerencie sua base de clientes</p>
         </div>
 
@@ -206,7 +206,7 @@ export default function CustomersPage() {
               <div className="bg-primary p-6 text-bg flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <Users className="text-secondary" size={20} />
-                  <h3 className="font-serif italic text-xl">{editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</h3>
+                  <h3 className="font-heading font-medium tracking-tight text-xl">{editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</h3>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="opacity-50 hover:opacity-100 transition-opacity">
                   <X size={20} />

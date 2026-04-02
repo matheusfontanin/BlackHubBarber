@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Scissors, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Mail, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
@@ -76,7 +76,7 @@ export default function RegisterPage() {
               <CheckCircle size={32} className="text-emerald-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-serif italic text-primary mb-2">Confirme seu e-mail</h1>
+              <h1 className="text-2xl font-heading font-bold text-primary mb-2">Confirme seu e-mail</h1>
               <p className="text-primary/50 text-sm leading-relaxed">
                 Enviamos um link de confirmacao para <strong className="text-primary">{email}</strong>. Clique no link para ativar sua conta.
               </p>
@@ -118,7 +118,7 @@ export default function RegisterPage() {
           >
             <Scissors size={28} className="text-primary" />
           </motion.div>
-          <h1 className="text-3xl font-serif italic text-white mb-2">BlackHub</h1>
+          <h1 className="text-3xl font-heading font-bold text-white mb-2">BlackHub</h1>
           <p className="text-sm text-white/30">Cadastre sua barbearia</p>
         </div>
 

@@ -19,14 +19,14 @@ export interface Customer {
   tenant_id: string;
 }
 
-export type AppointmentStatus = 'scheduled' | 'confirmed' | 'cancelled' | 'finished' | 'no_show';
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'no_show' | 'canceled';
 
 export interface Appointment {
   id?: string;
   client_id: string;
   service_id: string;
-  start_time: string;
-  end_time: string;
+  starts_at: string;
+  ends_at: string;
   status: AppointmentStatus;
   notes?: string;
   tenant_id: string;
@@ -93,9 +93,9 @@ export const crudService = {
       .from('appointments')
       .select('*, clients(name, phone), services(name, price, duration_minutes)')
       .eq('tenant_id', tenantId)
-      .gte('start_time', start)
-      .lte('start_time', end)
-      .order('start_time');
+      .gte('starts_at', start)
+      .lte('starts_at', end)
+      .order('starts_at');
     if (error) throw error;
     return (data ?? []) as Appointment[];
   },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
@@ -19,17 +19,19 @@ const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 08:00–21:00
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   scheduled: 'Agendado',
   confirmed: 'Confirmado',
-  cancelled: 'Cancelado',
-  finished: 'Concluído',
+  canceled: 'Cancelado',
+  completed: 'Concluído',
   no_show: 'Não compareceu',
+  in_progress: 'Em Andamento',
 };
 
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
   scheduled: 'border-secondary bg-primary',
   confirmed: 'border-green-400 bg-green-900',
-  cancelled: 'border-red-400 bg-red-900 opacity-60',
-  finished: 'border-primary/40 bg-primary/60',
+  canceled: 'border-red-400 bg-red-900 opacity-60',
+  completed: 'border-primary/40 bg-primary/60',
   no_show: 'border-orange-400 bg-orange-900 opacity-60',
+  in_progress: 'border-blue-400 bg-blue-900',
 };
 
 type View = 'day' | 'week' | 'month';
@@ -114,8 +116,8 @@ export default function CalendarPage() {
     setSelectedAppointment(app);
     setSelectedCustomer(app.client_id ?? '');
     setSelectedService(app.service_id ?? '');
-    setAppointmentDate(format(parseISO(app.start_time), 'yyyy-MM-dd'));
-    setAppointmentTime(format(parseISO(app.start_time), 'HH:mm'));
+    setAppointmentDate(format(parseISO(app.starts_at), 'yyyy-MM-dd'));
+    setAppointmentTime(format(parseISO(app.starts_at), 'HH:mm'));
     setAppointmentNotes(app.notes ?? '');
     setFormError(null);
     setIsModalOpen(true);
@@ -144,8 +146,8 @@ export default function CalendarPage() {
         tenant_id: tenantId,
         client_id: selectedCustomer,
         service_id: selectedService,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
+        starts_at: startTime.toISOString(),
+        ends_at: endTime.toISOString(),
         status: 'scheduled' as AppointmentStatus,
         notes: appointmentNotes || undefined,
         source: 'manual',
@@ -198,7 +200,7 @@ export default function CalendarPage() {
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="space-y-3">
-          <h1 className="text-4xl font-serif italic">Agenda</h1>
+          <h1 className="text-4xl font-heading font-medium tracking-tight">Agenda</h1>
           <div className="flex flex-wrap items-center gap-3">
             {/* View toggle */}
             <div className="flex bg-white rounded-lg p-1 border border-primary/5 shadow-sm">
@@ -285,11 +287,11 @@ export default function CalendarPage() {
                 ))}
 
                 {appointments
-                  .filter(app => isSameDay(parseISO(app.start_time), day))
+                  .filter(app => isSameDay(parseISO(app.starts_at), day))
                   .map(app => {
-                    const start = parseISO(app.start_time);
+                    const start = parseISO(app.starts_at);
                     const top = (start.getHours() - 8) * 80 + (start.getMinutes() / 60) * 80;
-                    const duration = (parseISO(app.end_time).getTime() - start.getTime()) / 60000;
+                    const duration = (parseISO(app.ends_at).getTime() - start.getTime()) / 60000;
                     const height = Math.max((duration / 60) * 80, 24);
 
                     return (
@@ -339,7 +341,7 @@ export default function CalendarPage() {
             return weeks.map((week, wi) => (
               <div key={wi} className="grid grid-cols-7 border-b border-primary/5 last:border-b-0">
                 {week.map(day => {
-                  const dayApps = appointments.filter(a => isSameDay(parseISO(a.start_time), day));
+                  const dayApps = appointments.filter(a => isSameDay(parseISO(a.starts_at), day));
                   const inMonth = day.getMonth() === currentDate.getMonth();
                   return (
                     <div
@@ -355,7 +357,7 @@ export default function CalendarPage() {
                       <div className="space-y-0.5">
                         {dayApps.slice(0, 3).map(app => (
                           <p key={app.id} className="text-[9px] font-bold bg-primary text-bg rounded px-1 truncate">
-                            {format(parseISO(app.start_time), 'HH:mm')} {app.clients?.name}
+                            {format(parseISO(app.starts_at), 'HH:mm')} {app.clients?.name}
                           </p>
                         ))}
                         {dayApps.length > 3 && (
@@ -390,7 +392,7 @@ export default function CalendarPage() {
               <div className="bg-primary p-6 text-bg flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <CalendarIcon className="text-secondary" size={20} />
-                  <h3 className="font-serif italic text-xl">
+                  <h3 className="font-heading font-medium tracking-tight text-xl">
                     {selectedAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}
                   </h3>
                 </div>

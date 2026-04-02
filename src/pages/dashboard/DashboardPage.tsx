@@ -88,7 +88,7 @@ export default function DashboardPage() {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
         <div>
           <p className="text-sm text-primary/40 font-medium mb-1 capitalize">{dayName}, {dateStr}</p>
-          <h1 className="text-3xl lg:text-4xl font-serif italic text-primary">Visao Geral</h1>
+          <h1 className="text-3xl lg:text-4xl font-heading font-medium tracking-tight text-primary">Visão Geral</h1>
         </div>
         <button className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]">
           <Calendar size={16} /> Novo Agendamento
@@ -126,7 +126,7 @@ export default function DashboardPage() {
         <div className="xl:col-span-2 bg-white rounded-2xl border border-primary/[0.04] shadow-sm overflow-hidden">
           <div className="p-5 lg:p-6 flex justify-between items-center">
             <div>
-              <h3 className="font-serif italic text-xl text-primary">Proximos Agendamentos</h3>
+              <h3 className="font-heading font-medium tracking-tight text-xl text-primary">Próximos Agendamentos</h3>
               <p className="text-xs text-primary/40 mt-0.5">Hoje, {dateStr}</p>
             </div>
             <button className="text-xs font-semibold text-secondary hover:text-primary flex items-center gap-1 transition-colors">
@@ -184,7 +184,7 @@ export default function DashboardPage() {
               <Sparkles size={16} className="text-secondary" />
             </div>
             <div>
-              <h3 className="font-serif italic text-lg text-white">Atividade IA</h3>
+              <h3 className="font-heading font-medium tracking-tight text-lg text-white">Atividade IA</h3>
               <p className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Tempo real</p>
             </div>
           </div>
@@ -222,7 +222,7 @@ export default function DashboardPage() {
         {/* Top Barbers */}
         <div className="bg-white rounded-2xl border border-primary/[0.04] shadow-sm p-5 lg:p-6">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-serif italic text-lg text-primary">Top Barbeiros</h3>
+            <h3 className="font-heading font-medium tracking-tight text-lg text-primary">Top Barbeiros</h3>
             <span className="text-[10px] font-bold text-primary/30 uppercase tracking-wider">Este mes</span>
           </div>
           <div className="space-y-3">
@@ -249,7 +249,7 @@ export default function DashboardPage() {
               <TrendingUp size={20} className="text-secondary" />
             </div>
             <div>
-              <h3 className="font-serif italic text-lg text-primary">Resumo do Dia</h3>
+              <h3 className="font-heading font-medium tracking-tight text-lg text-primary">Resumo do Dia</h3>
               <p className="text-xs text-primary/40">Performance de hoje</p>
             </div>
           </div>
