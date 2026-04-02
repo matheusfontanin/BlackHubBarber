@@ -1,44 +1,63 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import OnboardingLayout from '@/layouts/OnboardingLayout';
-import { Scissors, MessageSquare, LayoutDashboard, ArrowRight, Loader2 } from 'lucide-react';
+import { Scissors, MessageSquare, LayoutDashboard, ArrowRight, Loader2, Bot, Users as UsersIcon } from 'lucide-react';
 import BarbershopInfoStep from '@/components/onboarding/BarbershopInfoStep';
 import ServicesStep from '@/components/onboarding/ServicesStep';
 import BusinessHoursStep from '@/components/onboarding/BusinessHoursStep';
+import TeamStep from '@/components/onboarding/TeamStep';
 import WhatsAppStep from '@/components/onboarding/WhatsAppStep';
 import CalendarStep from '@/components/onboarding/CalendarStep';
+import AiStep from '@/components/onboarding/AiStep';
 import FinalStep from '@/components/onboarding/FinalStep';
 import { saveOnboardingData, OnboardingData } from '@/services/onboardingService';
 import type { BarbershopFormData, Service, DayHours, WhatsAppStepData, CalendarStepData } from '@/types/onboarding';
+import type { TeamBarber } from '@/components/onboarding/TeamStep';
+import type { AiStepData } from '@/components/onboarding/AiStep';
+
+/*
+  Fluxo expandido:
+  1. Welcome
+  2. Dados da Barbearia
+  3. Serviços
+  4. Horários
+  5. Equipe (NOVO)
+  6. WhatsApp
+  7. Agenda / Calendar
+  8. IA (NOVO)
+  9. Finalização
+*/
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Partial<OnboardingData>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const totalSteps = 7;
+  const totalSteps = 9;
 
-  const nextStep = (data?: BarbershopFormData | Service[] | DayHours[] | WhatsAppStepData | CalendarStepData) => {
+  const nextStep = (data?: BarbershopFormData | Service[] | DayHours[] | WhatsAppStepData | CalendarStepData | TeamBarber[] | AiStepData) => {
     if (data) {
       setFormData(prev => {
         if (Array.isArray(data)) {
-          // Services or BusinessHours
-          if (data.length > 0 && 'duration' in data[0]) {
-            return { ...prev, services: data as Service[] };
-          } else if (data.length > 0 && 'isOpen' in data[0]) {
-            return { ...prev, businessHours: data as DayHours[] };
+          if (data.length === 0) {
+            // Could be empty team or services — check current step
+            if (step === 5) return { ...prev, team: data as TeamBarber[] };
+            return prev;
           }
-        } else if ('name' in data && 'ownerName' in data) {
-          // BarbershopFormData
-          return { ...prev, ...data as BarbershopFormData };
-        } else if ('whatsappInstanceName' in data || 'googleCalendarConnected' in data) {
-          // WhatsAppStepData or CalendarStepData
-          return { ...prev, ...data };
+          if ('duration' in data[0]) return { ...prev, services: data as Service[] };
+          if ('isOpen' in data[0]) return { ...prev, businessHours: data as DayHours[] };
+          if ('role' in data[0] && 'specialties' in data[0]) return { ...prev, team: data as TeamBarber[] };
+        } else if (typeof data === 'object' && data !== null) {
+          if ('ownerName' in data) return { ...prev, ...data as BarbershopFormData };
+          if ('whatsappInstanceName' in data) return { ...prev, ...data as WhatsAppStepData };
+          if ('googleCalendarConnected' in data) return { ...prev, ...data as CalendarStepData };
+          if ('assistantName' in data) return { ...prev, aiSettings: data as AiStepData };
         }
         return prev;
       });
     }
     setStep(s => Math.min(s + 1, totalSteps));
   };
+
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   const handleComplete = async () => {
@@ -73,6 +92,7 @@ export default function OnboardingPage() {
           </motion.div>
         ) : (
           <>
+            {/* Step 1: Welcome */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -93,7 +113,7 @@ export default function OnboardingPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-3xl">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-4xl">
                   <div className="p-6 bg-white rounded-xl shadow-sm border border-primary/5 space-y-3">
                     <Scissors className="text-secondary mx-auto" size={24} />
                     <h3 className="font-bold text-primary">Agenda automatizada</h3>
@@ -105,9 +125,14 @@ export default function OnboardingPage() {
                     <p className="text-sm text-primary/50">Sua IA atende e agenda via WhatsApp 24/7.</p>
                   </div>
                   <div className="p-6 bg-white rounded-xl shadow-sm border border-primary/5 space-y-3">
+                    <UsersIcon className="text-secondary mx-auto" size={24} />
+                    <h3 className="font-bold text-primary">Gestão de Equipe</h3>
+                    <p className="text-sm text-primary/50">Agenda individual por barbeiro com regras.</p>
+                  </div>
+                  <div className="p-6 bg-white rounded-xl shadow-sm border border-primary/5 space-y-3">
                     <LayoutDashboard className="text-secondary mx-auto" size={24} />
                     <h3 className="font-bold text-primary">Dashboard completo</h3>
-                    <p className="text-sm text-primary/50">Métricas de faturamento e conversão em tempo real.</p>
+                    <p className="text-sm text-primary/50">Métricas de faturamento e conversão.</p>
                   </div>
                 </div>
 
@@ -121,19 +146,28 @@ export default function OnboardingPage() {
               </motion.div>
             )}
 
+            {/* Step 2: Barbershop Info */}
             {step === 2 && (
               <BarbershopInfoStep onNext={nextStep} onBack={prevStep} />
             )}
 
+            {/* Step 3: Services */}
             {step === 3 && (
-              <ServicesStep onNext={(services) => nextStep({ services })} onBack={prevStep} />
+              <ServicesStep onNext={(services) => nextStep(services)} onBack={prevStep} />
             )}
 
+            {/* Step 4: Business Hours */}
             {step === 4 && (
-              <BusinessHoursStep onNext={(businessHours) => nextStep({ businessHours })} onBack={prevStep} />
+              <BusinessHoursStep onNext={(businessHours) => nextStep(businessHours)} onBack={prevStep} />
             )}
 
+            {/* Step 5: Team (NOVO) */}
             {step === 5 && (
+              <TeamStep onNext={(barbers) => nextStep(barbers)} onBack={prevStep} />
+            )}
+
+            {/* Step 6: WhatsApp */}
+            {step === 6 && (
               <WhatsAppStep
                 phone={formData.phone}
                 onNext={nextStep}
@@ -141,11 +175,18 @@ export default function OnboardingPage() {
               />
             )}
 
-            {step === 6 && (
+            {/* Step 7: Calendar */}
+            {step === 7 && (
               <CalendarStep onNext={nextStep} onBack={prevStep} />
             )}
 
-            {step === 7 && (
+            {/* Step 8: AI (NOVO) */}
+            {step === 8 && (
+              <AiStep onNext={(aiData) => nextStep(aiData)} onBack={prevStep} />
+            )}
+
+            {/* Step 9: Final */}
+            {step === 9 && (
               <FinalStep onComplete={handleComplete} onBack={prevStep} />
             )}
           </>

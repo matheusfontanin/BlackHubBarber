@@ -40,6 +40,24 @@ export interface CalendarStepData {
   googleCalendarConnected?: boolean;
 }
 
+// Team step data (reexport for convenience)
+export interface TeamBarberData {
+  name: string;
+  role: string;
+  specialties: string;
+}
+
+// AI step data (reexport for convenience)
+export interface AiConfigData {
+  assistantName: string;
+  toneOfVoice: string;
+  serviceStyle: string;
+  businessSummary: string;
+  targetAudience: string;
+  differentiators: string;
+  importantNotes: string;
+}
+
 // Union type for onNext data based on step
 export type StepData = 
   | BarbershopFormData
@@ -47,4 +65,6 @@ export type StepData =
   | DayHours[]
   | WhatsAppStepData
   | CalendarStepData
+  | TeamBarberData[]
+  | AiConfigData
   | undefined;
