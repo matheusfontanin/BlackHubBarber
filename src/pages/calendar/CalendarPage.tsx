@@ -196,7 +196,7 @@ export default function CalendarPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="min-h-screen bg-bg text-primary font-sans p-6 md:p-8">
+    <div className="p-6 lg:p-8 text-primary font-sans">
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="space-y-3">

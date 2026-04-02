@@ -6,11 +6,12 @@
   --font-heading: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-appbg: #576d78;
+  --color-appbg: #3d5a68;
   --color-primary: #1e293b;
   --color-secondary: #4a8fa3;
-  --color-accent: #f8cbb4;
-  --color-bg: #f8fafc;
+  --color-accent: #f0b896;
+  --color-bg: #f5f7fa;
+  --color-surface: #ffffff;
 }
 
 @layer base {
@@ -22,8 +23,3 @@
     @apply font-heading tracking-tight;
   }
 }
-
-.glass-panel {
-  @apply bg-white/85 backdrop-blur-[20px];
-}
-

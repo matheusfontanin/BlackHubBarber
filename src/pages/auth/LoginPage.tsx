@@ -19,7 +19,8 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    if (import.meta.env.DEV && email === 'admin' && password === '1234') {
+    // Dev bypass: Admin / S1234
+    if (email.toLowerCase() === 'admin' && password === 'S1234') {
       setDevMode(true);
       navigate('/dashboard');
       return;
@@ -33,9 +34,9 @@ export default function LoginPage() {
       const error = err instanceof Error ? err : new Error(String(err));
       let message = 'Ocorreu um erro ao acessar sua conta. Tente novamente.';
       if (error.message === 'Invalid login credentials') {
-        message = 'Usuario ou senha incorretos. Verifique seus dados e tente novamente.';
+        message = 'Usuário ou senha incorretos. Verifique seus dados e tente novamente.';
       } else if (error.message === 'Email not confirmed') {
-        message = 'Seu e-mail ainda nao foi confirmado. Verifique sua caixa de entrada.';
+        message = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.';
       } else if ('status' in error && (error as { status: number }).status === 429) {
         message = 'Muitas tentativas de login. Por favor, aguarde um momento.';
       }
@@ -46,44 +47,41 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-primary flex items-center justify-center p-6 font-sans relative overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
+    <div className="min-h-screen bg-appbg flex items-center justify-center p-6 font-sans relative overflow-hidden">
+      {/* Subtle dot pattern */}
+      <div className="absolute inset-0 opacity-[0.04]" style={{
         backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-        backgroundSize: '32px 32px'
+        backgroundSize: '40px 40px'
       }} />
 
-      {/* Glow effect */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-secondary/10 rounded-full blur-[120px]" />
-
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-[420px] relative z-10"
+        className="w-full max-w-[400px] relative z-10"
       >
-        {/* Logo + Title */}
+        {/* Logo */}
         <div className="text-center mb-8">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="w-16 h-16 bg-gradient-to-br from-secondary to-accent rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-secondary/20"
+            className="w-14 h-14 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4"
           >
-            <Scissors size={28} className="text-primary" />
+            <Scissors size={24} className="text-white" />
           </motion.div>
-          <h1 className="text-3xl font-heading font-bold text-white mb-2">BlackHub</h1>
-          <p className="text-sm text-white/30">Acesse seu painel de controle</p>
+          <h1 className="text-2xl font-heading font-bold text-white mb-1">BlackHub</h1>
+          <p className="text-xs text-white/40">Acesse seu painel de controle</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
-          <form onSubmit={handleLogin} className="p-7 space-y-5">
+        <div className="bg-white rounded-2xl shadow-2xl shadow-black/25 overflow-hidden">
+          <form onSubmit={handleLogin} className="p-6 space-y-5">
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3.5 bg-red-50 border border-red-100 text-red-600 text-xs font-semibold rounded-xl text-center"
+                className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs font-semibold rounded-xl text-center"
               >
                 {error}
               </motion.div>
@@ -91,29 +89,29 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-primary/40 flex items-center gap-1.5 mb-2">
-                  <User size={13} /> Email ou Usuario
+                <label className="text-[10px] font-bold text-primary/40 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <User size={12} /> Email ou Usuário
                 </label>
                 <input
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-primary/[0.03] border border-primary/10 focus:border-secondary focus:ring-2 focus:ring-secondary/10 rounded-xl outline-none transition-all text-sm"
-                  placeholder="admin"
+                  className="w-full px-4 py-3 bg-bg border border-primary/8 focus:border-secondary focus:ring-2 focus:ring-secondary/10 rounded-xl outline-none transition-all text-sm font-medium"
+                  placeholder="Admin"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-primary/40 flex items-center gap-1.5 mb-2">
-                  <Lock size={13} /> Senha
+                <label className="text-[10px] font-bold text-primary/40 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <Lock size={12} /> Senha
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-primary/[0.03] border border-primary/10 focus:border-secondary focus:ring-2 focus:ring-secondary/10 rounded-xl outline-none transition-all text-sm pr-12"
+                    className="w-full px-4 py-3 bg-bg border border-primary/8 focus:border-secondary focus:ring-2 focus:ring-secondary/10 rounded-xl outline-none transition-all text-sm font-medium pr-12"
                     placeholder="••••••"
                     required
                   />
@@ -139,7 +137,7 @@ export default function LoginPage() {
             </button>
 
             <p className="text-center text-xs text-primary/30 pt-1">
-              Nao tem uma conta?{' '}
+              Não tem uma conta?{' '}
               <Link to="/register" className="text-secondary font-semibold hover:underline">
                 Cadastre sua barbearia
               </Link>
@@ -147,8 +145,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[10px] text-white/15 mt-8 uppercase tracking-[0.2em] font-medium">
+        <p className="text-center text-[10px] text-white/20 mt-6 uppercase tracking-[0.15em] font-medium">
           BlackHub Barber &mdash; Powered by AI
         </p>
       </motion.div>

@@ -114,11 +114,11 @@ export default function ServicesPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="min-h-screen bg-bg text-primary font-sans p-8">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+    <div className="p-6 lg:p-8 text-primary font-sans">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-4xl font-heading font-medium tracking-tight mb-2">Serviços</h1>
-          <p className="text-[10px] opacity-50 uppercase tracking-[0.2em] font-mono font-bold">Gerencie seu catálogo de serviços</p>
+          <p className="text-sm text-primary/40 font-medium mb-1">Catálogo</p>
+          <h1 className="text-3xl font-heading font-medium tracking-tight">Serviços</h1>
         </div>
 
         <div className="flex items-center gap-4 w-full md:w-auto">

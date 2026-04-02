@@ -88,7 +88,7 @@ export default function DashboardPage() {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
         <div>
           <p className="text-sm text-primary/40 font-medium mb-1 capitalize">{dayName}, {dateStr}</p>
-          <h1 className="text-3xl lg:text-4xl font-heading font-medium tracking-tight text-primary">Visão Geral</h1>
+          <h1 className="text-3xl font-heading font-medium tracking-tight text-primary">Visão Geral</h1>
         </div>
         <button className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]">
           <Calendar size={16} /> Novo Agendamento

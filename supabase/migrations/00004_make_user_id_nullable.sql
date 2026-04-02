@@ -1,0 +1,1 @@
+ALTER TABLE tenant_members ALTER COLUMN user_id DROP NOT NULL;
