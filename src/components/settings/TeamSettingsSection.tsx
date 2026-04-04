@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, Edit, Trash2, X, Check, Loader2, AlertTriangle, UserCheck, UserX } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, X, Check, Loader2, AlertTriangle, UserCheck, UserX, Calendar } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
 import { getBarbers, createBarber, updateBarber, deleteBarber, toggleBarberActive } from '@/services/teamService';
 import type { Barber } from '@/types/settings';
@@ -24,6 +24,7 @@ export default function TeamSettingsSection() {
   const [phone, setPhone] = useState('');
   const [specialties, setSpecialties] = useState('');
   const [notes, setNotes] = useState('');
+  const [googleCalendarId, setGoogleCalendarId] = useState('');
 
   useEffect(() => {
     if (tenantId) fetchBarbers();
@@ -43,7 +44,7 @@ export default function TeamSettingsSection() {
 
   const openNew = () => {
     setEditing(null);
-    setName(''); setRole('barbeiro'); setPhone(''); setSpecialties(''); setNotes('');
+    setName(''); setRole('barbeiro'); setPhone(''); setSpecialties(''); setNotes(''); setGoogleCalendarId('');
     setError(null);
     setModalOpen(true);
   };
@@ -55,6 +56,7 @@ export default function TeamSettingsSection() {
     setPhone(barber.phone ?? '');
     setSpecialties(barber.specialties ?? '');
     setNotes(barber.notes ?? '');
+    setGoogleCalendarId(barber.google_calendar_id ?? '');
     setError(null);
     setModalOpen(true);
   };
@@ -65,9 +67,9 @@ export default function TeamSettingsSection() {
     setError(null);
     try {
       if (editing?.id) {
-        await updateBarber(editing.id, { name, role, phone: phone || null, specialties: specialties || null, notes: notes || null });
+        await updateBarber(editing.id, { name, role, phone: phone || null, specialties: specialties || null, notes: notes || null, google_calendar_id: googleCalendarId || null });
       } else {
-        await createBarber({ tenant_id: tenantId, name, role, phone: phone || null, specialties: specialties || null, notes: notes || null, is_active: true });
+        await createBarber({ tenant_id: tenantId, name, role, phone: phone || null, specialties: specialties || null, notes: notes || null, google_calendar_id: googleCalendarId || null, is_active: true });
       }
       setModalOpen(false);
       fetchBarbers();
@@ -138,6 +140,9 @@ export default function TeamSettingsSection() {
                     {barber.specialties && (
                       <span className="text-[10px] text-secondary/60">• {barber.specialties}</span>
                     )}
+                    {barber.google_calendar_id && (
+                      <span className="text-[10px] text-green-500/70 flex items-center gap-0.5"><Calendar size={9} /> Calendar</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -207,6 +212,11 @@ export default function TeamSettingsSection() {
                 <div>
                   <label className={LABEL_CLS}>Especialidades</label>
                   <input type="text" value={specialties} onChange={e => setSpecialties(e.target.value)} placeholder="Degradê, barba, platinado..." className={INPUT_CLS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Google Calendar ID</label>
+                  <input type="text" value={googleCalendarId} onChange={e => setGoogleCalendarId(e.target.value)} placeholder="xxxx@group.calendar.google.com" className={INPUT_CLS} />
+                  <p className="text-[10px] text-primary/30 mt-1">ID do Google Calendar do barbeiro para controlar a agenda.</p>
                 </div>
                 <div>
                   <label className={LABEL_CLS}>Observações</label>

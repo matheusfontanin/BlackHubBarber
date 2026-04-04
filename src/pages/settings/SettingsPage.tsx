@@ -28,31 +28,31 @@ export default function SettingsPage() {
     <div className="p-6 lg:p-8 max-w-[1200px] mx-auto">
       {/* Header */}
       <header className="mb-8">
-        <p className="text-sm text-primary/40 font-medium mb-1">Painel</p>
-        <h1 className="text-3xl font-heading font-medium tracking-tight text-primary">Configurações</h1>
-        <p className="text-sm text-primary/40 mt-1">Centro de configuração do seu negócio e do assistente IA.</p>
+        <p className="text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Painel</p>
+        <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Configurações</h1>
+        <p className="text-sm text-muted mt-3">Centro de configuração do seu negócio e do assistente IA.</p>
       </header>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar Tabs */}
-        <nav className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 shrink-0 lg:w-60">
+        <nav className="flex lg:flex-col gap-1.5 overflow-x-auto pb-2 lg:pb-0 shrink-0 lg:w-56">
           {TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all shrink-0 w-full text-left",
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all shrink-0 w-full text-left",
                 activeTab === tab.key
-                  ? "bg-primary text-white shadow-md shadow-primary/15"
-                  : "text-primary/50 hover:text-primary hover:bg-white bg-transparent"
+                  ? "bg-gold/10 border border-gold/25 text-gold shadow-[0_0_12px_rgba(201,168,76,0.08)]"
+                  : "text-muted hover:text-primary hover:bg-surface/60 border border-transparent"
               )}
             >
-              <tab.icon size={18} />
+              <tab.icon size={17} className={activeTab === tab.key ? 'text-gold' : ''} />
               <div className="hidden lg:block">
-                <span className="block">{tab.label}</span>
+                <span className="block text-sm">{tab.label}</span>
                 <span className={cn(
                   "block text-[10px] font-medium mt-0.5",
-                  activeTab === tab.key ? "text-white/60" : "text-primary/30"
+                  activeTab === tab.key ? "text-gold/60" : "text-faint"
                 )}>{tab.desc}</span>
               </div>
               <span className="lg:hidden">{tab.label}</span>
@@ -67,7 +67,7 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl border border-primary/[0.06] shadow-sm p-6 lg:p-8"
+            className="card p-6 lg:p-8"
           >
             {activeTab === 'barbershop' && <BarbershopSettingsSection />}
             {activeTab === 'team' && <TeamSettingsSection />}

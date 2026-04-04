@@ -11,7 +11,6 @@ import {
   Menu,
   X,
   Settings,
-  ChevronLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,97 +47,113 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen bg-appbg font-sans text-primary">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-appbg px-4 flex items-center justify-between z-[60]">
-        <div className="flex items-center gap-2.5 text-white">
-          <div className="w-8 h-8 rounded-full border-2 border-white/60 flex flex-wrap gap-[3px] items-center justify-center p-1">
-            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-            <div className="w-1.5 h-1.5 bg-white/40 rounded-full"></div>
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar px-4 flex items-center justify-between z-[60] border-b border-border">
+        <div className="flex items-center gap-2.5">
+          {/* Logo mark */}
+          <div className="w-7 h-7 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center">
+            <Scissors size={13} className="text-gold" />
           </div>
-          <span className="font-heading font-bold text-base">BlackHub</span>
+          <span className="font-heading font-bold text-base text-primary italic">BlackHub</span>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-white/70 hover:text-white rounded-lg transition-colors">
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-muted hover:text-primary rounded-lg transition-colors"
+        >
           {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </header>
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setIsMobileMenuOpen(false)} />
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
 
-      {/* Sidebar — narrow icon-only on desktop */}
+      {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 h-full bg-appbg flex flex-col z-50 transition-all duration-300 lg:translate-x-0",
-        "w-[100px] pt-14 lg:pt-0",
+        "fixed left-0 top-0 h-full bg-sidebar flex flex-col z-50 transition-all duration-300 lg:translate-x-0",
+        "w-[88px] pt-14 lg:pt-0",
+        "border-r border-border",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* Logo */}
-        <div className="hidden lg:flex h-20 items-center justify-center shrink-0">
+        <div className="hidden lg:flex h-[72px] items-center justify-center shrink-0 border-b border-border">
           <div className="flex flex-col items-center gap-1.5">
-            <div className="w-10 h-10 rounded-full border-2 border-white/50 flex flex-wrap gap-[3px] items-center justify-center p-1.5">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-              <div className="w-2 h-2 bg-white/40 rounded-full"></div>
-              <div className="w-2 h-2 bg-white/40 rounded-full"></div>
+            <div className="w-9 h-9 rounded-xl bg-gold/10 border border-gold/25 flex items-center justify-center shadow-[0_0_12px_rgba(201,168,76,0.15)]">
+              <Scissors size={16} className="text-gold" />
             </div>
-            <span className="text-white/70 text-[9px] font-heading font-semibold uppercase tracking-[0.15em]">BlackHub</span>
+            <span className="text-[9px] font-heading font-bold text-gold/70 uppercase tracking-[0.18em]">
+              BlackHub
+            </span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 flex flex-col items-center gap-1 py-4 px-2">
+        <nav className="flex-1 flex flex-col items-center gap-0.5 py-4 px-2.5">
           {menuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => cn(
-                "flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl w-full transition-all group",
+                "flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl w-full transition-all duration-200 group relative",
                 isActive
-                  ? "text-white"
-                  : "text-white/35 hover:text-white/70"
+                  ? "text-sidebar"
+                  : "text-muted hover:text-primary"
               )}
             >
               {({ isActive }) => (
                 <>
                   <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                    isActive ? "bg-white text-appbg shadow-lg shadow-white/10" : "group-hover:bg-white/10"
+                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                    isActive
+                      ? "bg-gold text-sidebar shadow-[0_2px_12px_rgba(201,168,76,0.4)]"
+                      : "group-hover:bg-white/[0.06]"
                   )}>
-                    <item.icon size={20} />
+                    <item.icon size={18} />
                   </div>
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{item.label}</span>
+                  <span className={cn(
+                    "text-[9px] font-semibold uppercase tracking-[0.1em] transition-colors",
+                    isActive ? "text-gold" : "text-muted group-hover:text-primary/70"
+                  )}>
+                    {item.label}
+                  </span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Bottom — Config + User */}
-        <div className="flex flex-col items-center gap-1 px-2 pb-5">
+        {/* Bottom */}
+        <div className="flex flex-col items-center gap-0.5 px-2.5 pb-4 border-t border-border pt-4">
           {bottomItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => cn(
-                "flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl w-full transition-all group",
-                isActive
-                  ? "text-white"
-                  : "text-white/35 hover:text-white/70"
+                "flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl w-full transition-all duration-200 group",
+                isActive ? "text-sidebar" : "text-muted hover:text-primary"
               )}
             >
               {({ isActive }) => (
                 <>
                   <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                    isActive ? "bg-white text-appbg shadow-lg shadow-white/10" : "group-hover:bg-white/10"
+                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                    isActive
+                      ? "bg-gold text-sidebar shadow-[0_2px_12px_rgba(201,168,76,0.4)]"
+                      : "group-hover:bg-white/[0.06]"
                   )}>
-                    <item.icon size={20} />
+                    <item.icon size={18} />
                   </div>
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{item.label}</span>
+                  <span className={cn(
+                    "text-[9px] font-semibold uppercase tracking-[0.1em] transition-colors",
+                    isActive ? "text-gold" : "text-muted group-hover:text-primary/70"
+                  )}>
+                    {item.label}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -146,13 +161,13 @@ export default function DashboardLayout() {
 
           {/* User avatar */}
           <div className="mt-2 flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center text-xs font-bold">
+            <div className="w-9 h-9 rounded-xl bg-gold/15 border border-gold/25 flex items-center justify-center text-[11px] font-bold text-gold">
               {initials}
             </div>
             <button
               onClick={handleSignOut}
               title="Sair"
-              className="text-[9px] uppercase tracking-[0.12em] font-semibold text-white/25 hover:text-white/60 transition-all flex items-center gap-1"
+              className="text-[9px] uppercase tracking-[0.1em] font-semibold text-faint hover:text-error transition-all flex items-center gap-1"
             >
               <LogOut size={10} /> Sair
             </button>
@@ -161,9 +176,8 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="pt-14 lg:pt-0 min-h-screen transition-all duration-300 flex flex-col lg:pl-[100px]">
-        {/* White rounded content container */}
-        <div className="flex-1 bg-bg lg:rounded-tl-[28px] overflow-hidden flex flex-col shadow-2xl shadow-black/10 lg:mt-4 lg:ml-2">
+      <main className="pt-14 lg:pt-0 min-h-screen lg:pl-[88px] flex flex-col">
+        <div className="flex-1 bg-bg overflow-hidden flex flex-col">
           <div className="flex-1 overflow-y-auto">
             <Outlet />
           </div>

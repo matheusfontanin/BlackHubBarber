@@ -70,6 +70,7 @@ export interface Barber {
   phone: string | null;
   specialties: string | null;
   notes: string | null;
+  google_calendar_id: string | null;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

@@ -25,7 +25,6 @@ export default function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Form State
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('');
@@ -72,7 +71,6 @@ export default function ServicesPage() {
     setIsSaving(true);
     try {
       const cleanPrice = parseFloat(price.replace(/[^\d.,]/g, '').replace(',', '.'));
-
       const serviceData = {
         name,
         price: cleanPrice,
@@ -80,13 +78,11 @@ export default function ServicesPage() {
         description,
         tenant_id: tenantId,
       };
-
       if (editingService?.id) {
         await crudService.updateService(editingService.id, serviceData);
       } else {
         await crudService.createService(serviceData);
       }
-
       setIsModalOpen(false);
       fetchServices();
     } catch (error: unknown) {
@@ -114,65 +110,83 @@ export default function ServicesPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="p-6 lg:p-8 text-primary font-sans">
+    <div className="p-6 lg:p-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <p className="text-sm text-primary/40 font-medium mb-1">Catálogo</p>
-          <h1 className="text-3xl font-heading font-medium tracking-tight">Serviços</h1>
+          <p className="text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Catálogo</p>
+          <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Serviços</h1>
         </div>
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={15} />
             <input
               type="text"
               placeholder="Buscar serviço..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-primary/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
+              className="input-dark pl-10"
             />
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="bg-primary text-bg px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
+            className="btn-gold flex items-center gap-2 shrink-0"
           >
-            <Plus size={18} /> Novo Serviço
+            <Plus size={16} /> Novo Serviço
           </button>
         </div>
       </header>
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="animate-spin text-secondary" size={40} />
+          <Loader2 className="animate-spin text-gold" size={36} />
+        </div>
+      ) : filteredServices.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mb-4">
+            <Scissors size={28} className="text-gold/60" />
+          </div>
+          <p className="text-muted font-medium">Nenhum serviço encontrado</p>
+          <p className="text-faint text-sm mt-1">Adicione seu primeiro serviço clicando em "Novo Serviço"</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredServices.map((service, i) => (
             <motion.div
               key={service.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white p-6 rounded-xl border border-primary/5 shadow-sm group hover:shadow-md transition-all"
+              className="card p-6 group hover:border-gold/20 hover:shadow-[0_4px_24px_rgba(201,168,76,0.08)] transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-secondary/10 text-secondary rounded-lg">
-                  <Scissors size={24} />
+                <div className="p-3 bg-gold/10 border border-gold/20 text-gold rounded-xl">
+                  <Scissors size={22} />
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleOpenModal(service)} className="p-2 hover:bg-bg/50 rounded transition-colors text-blue-600"><Edit2 size={16}/></button>
-                  <button onClick={() => service.id && handleDelete(service.id)} className="p-2 hover:bg-bg/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
+                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleOpenModal(service)}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors text-muted hover:text-primary"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => service.id && handleDelete(service.id)}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors text-muted hover:text-error"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               </div>
 
-              <h3 className="font-heading font-medium tracking-tight text-xl mb-1">{service.name}</h3>
-              <p className="text-xs opacity-50 mb-4 line-clamp-2">{service.description || 'Sem descrição.'}</p>
+              <h3 className="font-heading font-bold text-xl text-primary italic mb-1">{service.name}</h3>
+              <p className="text-xs text-muted mb-4 line-clamp-2">{service.description || 'Sem descrição.'}</p>
 
-              <div className="flex items-center justify-between pt-4 border-t border-primary/5">
-                <div className="flex items-center gap-2 text-xs font-mono font-bold opacity-60">
-                  <Clock size={14} /> {service.duration_minutes} min
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-muted">
+                  <Clock size={13} /> {service.duration_minutes} min
                 </div>
-                <div className="text-lg font-mono font-bold text-secondary">
+                <div className="text-lg font-mono font-bold text-gold">
                   R$ {Number(service.price).toFixed(2)}
                 </div>
               </div>
@@ -181,105 +195,101 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {/* Modal Novo/Editar Serviço */}
+      {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              initial={{ opacity: 0, y: 20, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.97 }}
+              className="bg-bg border border-border2 w-full max-w-md rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden"
             >
-              <div className="bg-primary p-6 text-bg flex justify-between items-center">
+              {/* Modal header */}
+              <div className="h-0.5 w-full bg-gradient-to-r from-gold/0 via-gold to-gold/0" />
+              <div className="bg-sidebar border-b border-border px-6 py-5 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <Scissors className="text-secondary" size={20} />
-                  <h3 className="font-heading font-medium tracking-tight text-xl">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h3>
+                  <div className="w-8 h-8 rounded-lg bg-gold/10 border border-gold/25 flex items-center justify-center">
+                    <Scissors size={15} className="text-gold" />
+                  </div>
+                  <h3 className="font-heading font-bold text-lg text-primary italic">
+                    {editingService ? 'Editar Serviço' : 'Novo Serviço'}
+                  </h3>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="opacity-50 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-muted hover:text-primary transition-colors p-1"
+                >
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-8 space-y-6">
-                <div className="space-y-4">
+              <form onSubmit={handleSave} className="p-6 space-y-5">
+                <div className="space-y-1">
+                  <label className="label-xs">Nome do Serviço</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="input-dark"
+                    placeholder="ex: Corte Degradê"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                      Nome do Serviço
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
-                      placeholder="ex: Corte Degradê"
+                    <label className="label-xs"><DollarSign size={11} /> Preço (R$)</label>
+                    <IMaskInput
+                      mask="R$ num"
+                      blocks={{
+                        num: {
+                          mask: Number,
+                          thousandsSeparator: '.',
+                          padFractionalZeros: true,
+                          normalizeZeros: true,
+                          radix: ',',
+                          mapToRadix: ['.'],
+                          scale: 2
+                        }
+                      }}
+                      value={price}
+                      onAccept={(value: string) => setPrice(value)}
+                      className="input-dark font-mono"
+                      placeholder="R$ 0,00"
                       required
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                        <DollarSign size={12} /> Preço (R$)
-                      </label>
-                      <IMaskInput
-                        mask="R$ num"
-                        blocks={{
-                          num: {
-                            mask: Number,
-                            thousandsSeparator: '.',
-                            padFractionalZeros: true,
-                            normalizeZeros: true,
-                            radix: ',',
-                            mapToRadix: ['.'],
-                            scale: 2
-                          }
-                        }}
-                        value={price}
-                        onAccept={(value: string) => setPrice(value)}
-                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
-                        placeholder="R$ 0,00"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                        <Clock size={12} /> Duração (min)
-                      </label>
-                      <input
-                        type="number"
-                        value={duration}
-                        onChange={(e) => setDuration(e.target.value)}
-                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
-                        placeholder="30"
-                        required
-                      />
-                    </div>
-                  </div>
-
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                      Descrição (Opcional)
-                    </label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"
-                      placeholder="Detalhes sobre o serviço..."
+                    <label className="label-xs"><Clock size={11} /> Duração (min)</label>
+                    <input
+                      type="number"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      className="input-dark font-mono"
+                      placeholder="30"
+                      required
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="label-xs">Descrição (Opcional)</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="input-dark resize-none h-24"
+                    placeholder="Detalhes sobre o serviço..."
+                  />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-4 bg-primary text-bg rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  className="btn-gold w-full py-3.5 flex items-center justify-center gap-2"
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : (
-                    <>
-                      {editingService ? 'Salvar Alterações' : 'Criar Serviço'}
-                      <Check size={18} />
-                    </>
+                    <><Check size={16} /> {editingService ? 'Salvar Alterações' : 'Criar Serviço'}</>
                   )}
                 </button>
               </form>

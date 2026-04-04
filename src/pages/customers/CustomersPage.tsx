@@ -24,7 +24,6 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Form State
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -70,20 +69,12 @@ export default function CustomersPage() {
     if (!tenantId) return;
     setIsSaving(true);
     try {
-      const customerData = {
-        name,
-        phone,
-        email,
-        notes,
-        tenant_id: tenantId,
-      };
-
+      const customerData = { name, phone, email, notes, tenant_id: tenantId };
       if (editingCustomer?.id) {
         await crudService.updateCustomer(editingCustomer.id, customerData);
       } else {
         await crudService.createCustomer(customerData);
       }
-
       setIsModalOpen(false);
       fetchCustomers();
     } catch (error: unknown) {
@@ -112,174 +103,186 @@ export default function CustomersPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="p-6 lg:p-8 text-primary font-sans">
+    <div className="p-6 lg:p-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <p className="text-sm text-primary/40 font-medium mb-1">Gestão</p>
-          <h1 className="text-3xl font-heading font-medium tracking-tight">Clientes</h1>
+          <p className="text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Gestão</p>
+          <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Clientes</h1>
         </div>
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={15} />
             <input
               type="text"
               placeholder="Buscar cliente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-primary/5 rounded-lg outline-none focus:border-secondary transition-all text-sm font-bold"
+              className="input-dark pl-10"
             />
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="bg-primary text-bg px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shrink-0"
+            className="btn-gold flex items-center gap-2 shrink-0"
           >
-            <Plus size={18} /> Novo Cliente
+            <Plus size={16} /> Novo Cliente
           </button>
         </div>
       </header>
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="animate-spin text-secondary" size={40} />
+          <Loader2 className="animate-spin text-gold" size={36} />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-primary/5 shadow-sm overflow-hidden">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-bg/30 text-[10px] uppercase tracking-widest font-bold text-primary/50">
-                <th className="px-6 py-4">Nome</th>
-                <th className="px-6 py-4">Contato</th>
-                <th className="px-6 py-4">Notas</th>
-                <th className="px-6 py-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-primary/5">
-              {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-bg/20 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-xs">
-                        {customer.name.charAt(0)}
-                      </div>
-                      <span className="font-bold text-sm">{customer.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs font-mono">
-                        <Phone size={12} className="opacity-30" /> {customer.phone}
-                      </div>
-                      {customer.email && (
-                        <div className="flex items-center gap-2 text-xs font-mono opacity-50">
-                          <Mail size={12} className="opacity-30" /> {customer.email}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-xs opacity-50 max-w-xs truncate">
-                    {customer.notes || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleOpenModal(customer)} className="p-2 hover:bg-bg/50 rounded transition-colors text-blue-600"><Edit2 size={16}/></button>
-                      <button onClick={() => customer.id && handleDelete(customer.id)} className="p-2 hover:bg-bg/50 rounded transition-colors text-red-600"><Trash2 size={16}/></button>
-                    </div>
-                  </td>
+        <div className="card overflow-hidden">
+          {filteredCustomers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mb-4">
+                <Users size={28} className="text-gold/60" />
+              </div>
+              <p className="text-muted font-medium">Nenhum cliente encontrado</p>
+              <p className="text-faint text-sm mt-1">Adicione seu primeiro cliente para começar</p>
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-faint">Nome</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-faint">Contato</th>
+                  <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-faint hidden md:table-cell">Notas</th>
+                  <th className="px-6 py-4 text-right text-[10px] uppercase tracking-widest font-bold text-faint">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredCustomers.map((customer) => (
+                  <tr key={customer.id} className="hover:bg-surface/40 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gold/10 border border-gold/20 text-gold flex items-center justify-center font-bold text-sm">
+                          {customer.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-sm text-primary">{customer.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs font-mono text-muted">
+                          <Phone size={11} className="text-faint" /> {customer.phone}
+                        </div>
+                        {customer.email && (
+                          <div className="flex items-center gap-2 text-xs font-mono text-faint">
+                            <Mail size={11} className="text-faint" /> {customer.email}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-muted max-w-xs truncate hidden md:table-cell">
+                      {customer.notes || <span className="text-faint italic">—</span>}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleOpenModal(customer)}
+                          className="p-2 hover:bg-surface rounded-lg transition-colors text-muted hover:text-primary"
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          onClick={() => customer.id && handleDelete(customer.id)}
+                          className="p-2 hover:bg-surface rounded-lg transition-colors text-muted hover:text-error"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
-      {/* Modal Novo/Editar Cliente */}
+      {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              initial={{ opacity: 0, y: 20, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.97 }}
+              className="bg-bg border border-border2 w-full max-w-md rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden"
             >
-              <div className="bg-primary p-6 text-bg flex justify-between items-center">
+              <div className="h-0.5 w-full bg-gradient-to-r from-gold/0 via-gold to-gold/0" />
+              <div className="bg-sidebar border-b border-border px-6 py-5 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <Users className="text-secondary" size={20} />
-                  <h3 className="font-heading font-medium tracking-tight text-xl">{editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</h3>
+                  <div className="w-8 h-8 rounded-lg bg-gold/10 border border-gold/25 flex items-center justify-center">
+                    <Users size={15} className="text-gold" />
+                  </div>
+                  <h3 className="font-heading font-bold text-lg text-primary italic">
+                    {editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}
+                  </h3>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="opacity-50 hover:opacity-100 transition-opacity">
+                <button onClick={() => setIsModalOpen(false)} className="text-muted hover:text-primary transition-colors p-1">
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-8 space-y-6">
-                <div className="space-y-4">
+              <form onSubmit={handleSave} className="p-6 space-y-5">
+                <div className="space-y-1">
+                  <label className="label-xs">Nome Completo</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="input-dark"
+                    placeholder="ex: João Silva"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                      Nome Completo
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold"
-                      placeholder="ex: João Silva"
+                    <label className="label-xs"><Phone size={11} /> WhatsApp</label>
+                    <IMaskInput
+                      mask="(00) 00000-0000"
+                      value={phone}
+                      onAccept={(value: string) => setPhone(value)}
+                      className="input-dark font-mono"
+                      placeholder="(00) 00000-0000"
                       required
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                        <Phone size={12} /> WhatsApp
-                      </label>
-                      <IMaskInput
-                        mask="(00) 00000-0000"
-                        value={phone}
-                        onAccept={(value: string) => setPhone(value)}
-                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
-                        placeholder="(00) 00000-0000"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                        <Mail size={12} /> Email
-                      </label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-mono"
-                        placeholder="ex@email.com"
-                      />
-                    </div>
-                  </div>
-
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-50 flex items-center gap-2">
-                      Observações
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="w-full px-4 py-3 bg-bg/30 border border-transparent focus:border-secondary rounded-lg outline-none transition-all text-sm font-bold resize-none h-24"
-                      placeholder="Preferências, alergias, etc..."
+                    <label className="label-xs"><Mail size={11} /> Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="input-dark font-mono"
+                      placeholder="ex@email.com"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="label-xs">Observações</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="input-dark resize-none h-24"
+                    placeholder="Preferências, alergias, etc..."
+                  />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-4 bg-primary text-bg rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  className="btn-gold w-full py-3.5 flex items-center justify-center gap-2"
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : (
-                    <>
-                      {editingCustomer ? 'Salvar Alterações' : 'Cadastrar Cliente'}
-                      <Check size={18} />
-                    </>
+                    <><Check size={16} /> {editingCustomer ? 'Salvar Alterações' : 'Cadastrar Cliente'}</>
                   )}
                 </button>
               </form>

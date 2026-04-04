@@ -1,0 +1,371 @@
+{
+  "name": "Commercial — Customer Booking Flow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];"
+      },
+      "id": "parse",
+      "name": "Parse Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $json;\nconst ai = ctx.ai_settings || {};\nconst booking = ctx.booking_settings || {};\nconst services = (ctx.services || []).map(s => `- ${s.name} (R$${s.price}, ${s.duration_minutes}min)`).join('\\n');\nconst barbers = (ctx.barbers || []).map(b => `- ${b.name}${b.specialties ? ' (' + b.specialties + ')' : ''}`).join('\\n');\nconst history = (ctx.history || []).map(m => `${m.role}: ${m.content}`).join('\\n');\n\nconst systemPrompt = `Voce e ${ai.assistant_name || 'o Assistente'} da barbearia ${ctx.tenant.name}.\nSua tarefa e ajudar o cliente a agendar um horario.\n\nRegras:\n- Antecedencia minima: ${booking.min_booking_notice_minutes || 60} minutos\n- Buffer entre agendamentos: ${booking.buffer_between_appointments_minutes || 10} minutos\n- ${booking.require_manual_confirmation ? 'O agendamento precisa de confirmacao do dono.' : 'O agendamento e confirmado automaticamente.'}\n- Confirme servico, barbeiro e horario com o cliente antes de criar.\n\nServicos disponiveis:\n${services || 'Nenhum cadastrado'}\n\nBarbeiros disponiveis:\n${barbers || 'Nenhum cadastrado'}\n\nExtraia da conversa:\n1. service_name (nome do servico)\n2. barber_name (nome do barbeiro, ou 'qualquer' se nao especificado)\n3. preferred_date (YYYY-MM-DD)\n4. preferred_time (HH:MM)\n5. status: 'collecting' se faltam dados, 'ready' se tudo confirmado\n\nResponda SOMENTE com JSON valido:\n{ \"service_name\": \"\", \"barber_name\": \"\", \"preferred_date\": \"\", \"preferred_time\": \"\", \"status\": \"\", \"reply\": \"mensagem para o cliente\" }`;\n\nreturn [{ json: { ...ctx, system_prompt: systemPrompt, chat_history: history } }];"
+      },
+      "id": "build-prompt",
+      "name": "Montar Prompt Booking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            { "content": "={{ $json.system_prompt }}", "role": "system" },
+            { "content": "=Historico:\n{{ $json.chat_history }}\n\nCliente: {{ $json.message_text }}", "role": "user" }
+          ]
+        },
+        "options": { "temperature": 0.3, "maxTokens": 600 }
+      },
+      "id": "ai-booking",
+      "name": "IA Booking",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse Payload').item.json;\nconst raw = $json.text || '';\nlet parsed;\ntry {\n  const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);\n} catch (e) {\n  parsed = { status: 'collecting', reply: 'Desculpe, pode repetir o horario desejado?' };\n}\nreturn [{ json: { ...ctx, booking_data: parsed } }];"
+      },
+      "id": "parse-booking",
+      "name": "Interpretar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ready",
+              "leftValue": "={{ $json.booking_data.status }}",
+              "rightValue": "ready",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-ready",
+      "name": "Dados Completos",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $json;\nconst bd = ctx.booking_data;\nconst services = ctx.services || [];\nconst barbers = ctx.barbers || [];\nconst booking = ctx.booking_settings || {};\n\nconst service = services.find(s =>\n  s.name.toLowerCase().includes((bd.service_name || '').toLowerCase())\n);\nconst wantsAny = !bd.barber_name || bd.barber_name.toLowerCase() === 'qualquer' || bd.barber_name.toLowerCase() === 'any';\nconst barber = wantsAny\n  ? barbers[0]\n  : barbers.find(b => b.name.toLowerCase().includes((bd.barber_name || '').toLowerCase())) || barbers[0];\n\nif (!service) {\n  return [{ json: { ...ctx, validation_error: `Servico '${bd.service_name}' nao encontrado. Por favor escolha: ${services.map(s=>s.name).join(', ')}`, booking_data: { ...bd, status: 'collecting' } } }];\n}\nif (!barber) {\n  return [{ json: { ...ctx, validation_error: 'Nenhum barbeiro disponivel.', booking_data: { ...bd, status: 'collecting' } } }];\n}\n\nconst buffer = booking.buffer_between_appointments_minutes || 10;\nconst minNotice = booking.min_booking_notice_minutes || 60;\n\nconst startDate = new Date(`${bd.preferred_date}T${bd.preferred_time}:00`);\nconst endDate = new Date(startDate.getTime() + service.duration_minutes * 60000);\n\n// Minimum notice check\nconst now = new Date();\nconst noticeMs = startDate.getTime() - now.getTime();\nif (noticeMs < minNotice * 60000) {\n  const neededTime = new Date(now.getTime() + minNotice * 60000);\n  return [{ json: { ...ctx, validation_error: `Preciso de pelo menos ${minNotice} minutos de antecedencia. O horario mais cedo disponivel seria ${neededTime.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}.`, booking_data: { ...bd, status: 'collecting' } } }];\n}\n\nreturn [{ json: {\n  ...ctx,\n  selected_service: service,\n  selected_barber: barber,\n  starts_at: startDate.toISOString(),\n  ends_at: endDate.toISOString(),\n  buffer_minutes: buffer,\n  validation_error: null\n} }];"
+      },
+      "id": "build-appointment",
+      "name": "Montar Appointment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "no-error",
+              "leftValue": "={{ $json.validation_error }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "isEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-validation",
+      "name": "Passou Validacao",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1740, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $json.tenant.id }}&barber_id=eq.{{ $json.selected_barber.id }}&status=in.(scheduled,confirmed)&starts_at=gte.{{ $json.starts_at }}&starts_at=lt.{{ $json.ends_at }}&select=id,starts_at,ends_at&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-conflict-exact",
+      "name": "Verificar Conflito Exato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1960, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $('Montar Appointment').item.json.tenant.id }}&barber_id=eq.{{ $('Montar Appointment').item.json.selected_barber.id }}&status=in.(scheduled,confirmed)&ends_at=gt.{{ $('Montar Appointment').item.json.starts_at }}&ends_at=lte.{{ $('Montar Appointment').item.json.ends_at }}&select=id,starts_at,ends_at&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-conflict-overlap",
+      "name": "Verificar Conflito Sobreposicao",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2180, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Montar Appointment').item.json;\nconst exact = $('Verificar Conflito Exato').item.json;\nconst overlap = $('Verificar Conflito Sobreposicao').item.json;\n\nconst exactArr = Array.isArray(exact) ? exact : [];\nconst overlapArr = Array.isArray(overlap) ? overlap : [];\nconst hasConflict = exactArr.length > 0 || overlapArr.length > 0;\n\nif (hasConflict) {\n  const conflicting = exactArr[0] || overlapArr[0];\n  const conflictStart = new Date(conflicting.starts_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});\n  const conflictEnd = new Date(conflicting.ends_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});\n  const nextSlot = new Date(new Date(conflicting.ends_at).getTime() + ctx.buffer_minutes * 60000);\n  const nextSlotStr = nextSlot.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});\n  return [{ json: {\n    ...ctx,\n    has_conflict: true,\n    conflict_message: `Infelizmente o barbeiro ${ctx.selected_barber.name} ja tem um horario das ${conflictStart} as ${conflictEnd}. O proximo horario disponivel seria as ${nextSlotStr}. Deseja agendar neste horario?`\n  } }];\n}\n\nreturn [{ json: { ...ctx, has_conflict: false } }];"
+      },
+      "id": "evaluate-conflict",
+      "name": "Avaliar Conflito",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2400, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "has-conflict",
+              "leftValue": "={{ $json.has_conflict }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-conflict-result",
+      "name": "Tem Conflito",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [2620, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ tenant_id: $json.tenant.id, client_id: $json.client.id, barber_id: $json.selected_barber.id, service_id: $json.selected_service.id, starts_at: $json.starts_at, ends_at: $json.ends_at, status: 'scheduled', source: 'ai', notes: 'Agendado via WhatsApp. Barbeiro: ' + $json.selected_barber.name + '. Servico: ' + $json.selected_service.name + '.' }) }}",
+        "options": {}
+      },
+      "id": "create-appointment",
+      "name": "Criar Appointment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2840, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Avaliar Conflito').item.json;\nconst apptRaw = $json;\nconst appt = Array.isArray(apptRaw) ? apptRaw[0] : apptRaw;\nconst startStr = new Date(appt.starts_at || ctx.starts_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });\n\nreturn [{ json: {\n  ...ctx,\n  reply_text: `Perfeito! Agendamento confirmado!\\n\\nServico: ${ctx.selected_service.name}\\nBarbeiro: ${ctx.selected_barber.name}\\nData/Hora: ${startStr}\\n\\nAguardamos voce! Se precisar cancelar ou remarcar, e so falar aqui.`\n} }];"
+      },
+      "id": "success-msg",
+      "name": "Mensagem Sucesso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3060, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $json;\nconst msg = ctx.conflict_message || 'Infelizmente este horario ja esta ocupado. Por favor, escolha outro horario.';\nreturn [{ json: { ...ctx, reply_text: msg } }];"
+      },
+      "id": "conflict-msg",
+      "name": "Mensagem Conflito",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2840, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Interpretar Resposta').item.json;\nconst error = ctx.validation_error || ctx.booking_data?.reply || 'Pode me informar o horario desejado?';\nreturn [{ json: { ...ctx, reply_text: error } }];"
+      },
+      "id": "validation-error-msg",
+      "name": "Mensagem Erro Validacao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Interpretar Resposta').item.json;\nconst reply = ctx.booking_data?.reply || 'Pode me dizer mais detalhes sobre o horario desejado?';\nreturn [{ json: { ...ctx, reply_text: reply } }];"
+      },
+      "id": "collecting-msg",
+      "name": "Mensagem Coletando",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ conversation_id: $json.conversation_id, tenant_id: $json.tenant.id, role: 'assistant', content: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "save-reply",
+      "name": "Salvar Resposta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3280, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $('Parse Payload').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Parse Payload').item.json.sender_phone_full, text: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3500, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge all paths into one for sending\nreturn [{ json: { ...$json } }];"
+      },
+      "id": "merge-reply",
+      "name": "Preparar Envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3060, 200]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]]
+    },
+    "Parse Payload": {
+      "main": [[{ "node": "Montar Prompt Booking", "type": "main", "index": 0 }]]
+    },
+    "Montar Prompt Booking": {
+      "main": [[{ "node": "IA Booking", "type": "main", "index": 0 }]]
+    },
+    "IA Booking": {
+      "main": [[{ "node": "Interpretar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Interpretar Resposta": {
+      "main": [[{ "node": "Dados Completos", "type": "main", "index": 0 }]]
+    },
+    "Dados Completos": {
+      "main": [
+        [{ "node": "Montar Appointment", "type": "main", "index": 0 }],
+        [{ "node": "Mensagem Coletando", "type": "main", "index": 0 }]
+      ]
+    },
+    "Montar Appointment": {
+      "main": [[{ "node": "Passou Validacao", "type": "main", "index": 0 }]]
+    },
+    "Passou Validacao": {
+      "main": [
+        [{ "node": "Verificar Conflito Exato", "type": "main", "index": 0 }],
+        [{ "node": "Mensagem Erro Validacao", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verificar Conflito Exato": {
+      "main": [[{ "node": "Verificar Conflito Sobreposicao", "type": "main", "index": 0 }]]
+    },
+    "Verificar Conflito Sobreposicao": {
+      "main": [[{ "node": "Avaliar Conflito", "type": "main", "index": 0 }]]
+    },
+    "Avaliar Conflito": {
+      "main": [[{ "node": "Tem Conflito", "type": "main", "index": 0 }]]
+    },
+    "Tem Conflito": {
+      "main": [
+        [{ "node": "Mensagem Conflito", "type": "main", "index": 0 }],
+        [{ "node": "Criar Appointment", "type": "main", "index": 0 }]
+      ]
+    },
+    "Criar Appointment": {
+      "main": [[{ "node": "Mensagem Sucesso", "type": "main", "index": 0 }]]
+    },
+    "Mensagem Sucesso": {
+      "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]]
+    },
+    "Mensagem Conflito": {
+      "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]]
+    },
+    "Mensagem Erro Validacao": {
+      "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]]
+    },
+    "Mensagem Coletando": {
+      "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]]
+    },
+    "Preparar Envio": {
+      "main": [[{ "node": "Salvar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Salvar Resposta": {
+      "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]]
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "name": "Commercial — Owner Rule Update Flow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: JSON.parse($input.first().json.payload) }];"
+      },
+      "id": "parse",
+      "name": "Parse Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "=Voce e o assistente administrativo da barbearia {{ $json.tenant.name }}.\nO DONO enviou uma mensagem para alterar uma regra do negocio.\n\nInterprete e gere JSON:\n{\n  \"action\": \"update_service\" | \"update_hours\" | \"update_barber\" | \"update_booking\" | \"update_ai\" | \"general_note\",\n  \"target_table\": \"services\" | \"tenants\" | \"barbers\" | \"tenant_booking_settings\" | \"tenant_ai_settings\" | \"regras_dinamicas\",\n  \"updates\": {},\n  \"filter\": {},\n  \"confirmation\": \"mensagem para o dono\",\n  \"confidence\": 0.0\n}\n\nExemplos:\n- 'corte agora e 60' -> update_service, services, {price:60}, {name:'corte'}, 0.9\n- 'nao atendemos sabado' -> update_hours, tenants, {opening_hours.sabado.isOpen:false}, {}, 0.95\n- 'a IA pode agendar sozinha' -> update_ai, tenant_ai_settings, {can_auto_schedule:true}, {}, 0.9\n\nResponda SOMENTE com JSON valido.",
+              "role": "system"
+            },
+            {
+              "content": "=Dono: {{ $json.message_text }}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": { "temperature": 0.2, "maxTokens": 500 }
+      },
+      "id": "ai-interpret",
+      "name": "IA Interpretar Regra",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse Payload').item.json;\nconst raw = $json.text || '';\nlet parsed;\ntry {\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(m ? m[0] : raw);\n} catch(e) { parsed = { action: 'general_note', target_table: 'regras_dinamicas', confirmation: 'Nao consegui interpretar a regra. Pode reformular?', confidence: 0 }; }\n\nreturn [{ json: { ...ctx, rule: parsed } }];"
+      },
+      "id": "parse-rule",
+      "name": "Parse Regra",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "confident",
+              "leftValue": "={{ $json.rule.confidence }}",
+              "rightValue": 0.6,
+              "operator": { "type": "number", "operation": "gte" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-confidence",
+      "name": "Confianca OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/regras_dinamicas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ tenant_id: $json.tenant.id, category: $json.rule.action || 'general', rule_key: $json.rule.action || 'unknown', rule_value: JSON.stringify($json.rule.updates || {}), description: $json.message_text, is_active: true }) }}",
+        "options": {}
+      },
+      "id": "save-rule",
+      "name": "Salvar Regra",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, reply_text: $json.rule.confirmation || 'Regra registrada com sucesso!' } }];"
+      },
+      "id": "success-reply",
+      "name": "Resposta Sucesso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, reply_text: $json.rule.confirmation || 'Nao entendi o comando. Pode reformular?' } }];"
+      },
+      "id": "low-confidence-reply",
+      "name": "Resposta Baixa Confianca",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $('Parse Payload').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Parse Payload').item.json.sender_phone_full, text: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json } }];"
+      },
+      "id": "merge",
+      "name": "Preparar Envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "IA Interpretar Regra", "type": "main", "index": 0 }]] },
+    "IA Interpretar Regra": { "main": [[{ "node": "Parse Regra", "type": "main", "index": 0 }]] },
+    "Parse Regra": { "main": [[{ "node": "Confianca OK", "type": "main", "index": 0 }]] },
+    "Confianca OK": {
+      "main": [
+        [{ "node": "Salvar Regra", "type": "main", "index": 0 }],
+        [{ "node": "Resposta Baixa Confianca", "type": "main", "index": 0 }]
+      ]
+    },
+    "Salvar Regra": { "main": [[{ "node": "Resposta Sucesso", "type": "main", "index": 0 }]] },
+    "Resposta Sucesso": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Resposta Baixa Confianca": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Preparar Envio": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "name": "Commercial — Customer Cancel Flow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: JSON.parse($input.first().json.payload) }];"
+      },
+      "id": "parse",
+      "name": "Parse Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $json.tenant.id }}&client_id=eq.{{ $json.client.id }}&status=in.(scheduled,confirmed)&order=starts_at.asc&limit=1&select=id,starts_at,barbers(name),services(name)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-appointment",
+      "name": "Buscar Agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "has",
+              "leftValue": "={{ Array.isArray($json) ? $json.length : 0 }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-appointment",
+      "name": "Tem Agendamento",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?id=eq.{{ $('Buscar Agendamento').item.json[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={ \"status\": \"cancelled\" }",
+        "options": {}
+      },
+      "id": "cancel-appointment",
+      "name": "Cancelar Agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse Payload').item.json;\nconst appt = $('Buscar Agendamento').item.json[0];\nconst date = new Date(appt.starts_at).toLocaleDateString('pt-BR');\nconst time = new Date(appt.starts_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});\nreturn [{ json: { ...ctx, reply_text: `Seu agendamento para ${date} as ${time} com ${appt.barbers?.name || 'o barbeiro'} foi cancelado. Se quiser remarcar, fala aqui!` } }];"
+      },
+      "id": "success-msg",
+      "name": "Mensagem Cancelamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$('Parse Payload').item.json, reply_text: 'Nao encontrei nenhum agendamento ativo para cancelar. Posso ajudar com mais alguma coisa?' } }];"
+      },
+      "id": "no-appointment",
+      "name": "Sem Agendamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ conversation_id: $json.conversation_id, tenant_id: $json.tenant.id, role: 'assistant', content: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "save-reply",
+      "name": "Salvar Resposta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $('Parse Payload').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Parse Payload').item.json.sender_phone_full, text: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json } }];"
+      },
+      "id": "merge",
+      "name": "Preparar Envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Agendamento", "type": "main", "index": 0 }]] },
+    "Buscar Agendamento": { "main": [[{ "node": "Tem Agendamento", "type": "main", "index": 0 }]] },
+    "Tem Agendamento": {
+      "main": [
+        [{ "node": "Cancelar Agendamento", "type": "main", "index": 0 }],
+        [{ "node": "Sem Agendamento", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cancelar Agendamento": { "main": [[{ "node": "Mensagem Cancelamento", "type": "main", "index": 0 }]] },
+    "Mensagem Cancelamento": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Sem Agendamento": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Preparar Envio": { "main": [[{ "node": "Salvar Resposta", "type": "main", "index": 0 }]] },
+    "Salvar Resposta": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
+  }
+}

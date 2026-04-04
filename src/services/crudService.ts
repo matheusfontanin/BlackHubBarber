@@ -25,6 +25,7 @@ export interface Appointment {
   id?: string;
   client_id: string;
   service_id: string;
+  barber_id?: string;
   starts_at: string;
   ends_at: string;
   status: AppointmentStatus;
@@ -33,6 +34,7 @@ export interface Appointment {
   source?: string;
   clients?: { name: string; phone: string };
   services?: { name: string; price: number; duration_minutes: number };
+  barbers?: { name: string } | null;
 }
 
 export const crudService = {
@@ -91,7 +93,7 @@ export const crudService = {
   async getAppointments(tenantId: string, start: string, end: string) {
     const { data, error } = await supabase
       .from('appointments')
-      .select('*, clients(name, phone), services(name, price, duration_minutes)')
+      .select('*, clients(name, phone), services(name, price, duration_minutes), barbers(name)')
       .eq('tenant_id', tenantId)
       .gte('starts_at', start)
       .lte('starts_at', end)

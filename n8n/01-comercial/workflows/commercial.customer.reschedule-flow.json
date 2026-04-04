@@ -1,0 +1,333 @@
+{
+  "name": "Commercial — Customer Reschedule Flow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: JSON.parse($input.first().json.payload) }];"
+      },
+      "id": "parse",
+      "name": "Parse Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $json.tenant.id }}&client_id=eq.{{ $json.client.id }}&status=in.(scheduled,confirmed)&order=starts_at.asc&limit=1&select=id,starts_at,ends_at,barber_id,service_id,barbers(name),services(name)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-appointment",
+      "name": "Buscar Agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "has",
+              "leftValue": "={{ Array.isArray($json) ? $json.length : 0 }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-appointment",
+      "name": "Tem Agendamento",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse Payload').item.json;\nconst appt = $('Buscar Agendamento').item.json[0];\nconst date = new Date(appt.starts_at).toLocaleDateString('pt-BR');\nconst time = new Date(appt.starts_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});\nconst barberName = appt.barbers?.name || 'barbeiro';\nconst serviceName = appt.services?.name || 'servico';\n\nreturn [{ json: { ...ctx, current_appointment: appt, appt_summary: `${date} as ${time} com ${barberName} (${serviceName})` } }];"
+      },
+      "id": "prepare-context",
+      "name": "Preparar Contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 200]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "=Voce e o assistente da barbearia {{ $('Parse Payload').item.json.tenant.name }}.\nO cliente tem um agendamento: {{ $json.appt_summary }}.\nEle quer remarcar.\n\nSe o cliente ja informou nova data e horario, extraia e retorne JSON:\n{ \"new_date\": \"YYYY-MM-DD\", \"new_time\": \"HH:MM\", \"status\": \"ready\", \"reply\": \"mensagem confirmando reagendamento\" }\n\nSe ainda faltam dados, pergunte e retorne:\n{ \"status\": \"collecting\", \"reply\": \"sua pergunta\" }",
+              "role": "system"
+            },
+            {
+              "content": "=Historico:\n{{ ($('Parse Payload').item.json.history || []).map(m => m.role + ': ' + m.content).join('\\n') }}\n\nCliente: {{ $('Parse Payload').item.json.message_text }}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": { "temperature": 0.3, "maxTokens": 400 }
+      },
+      "id": "ai-reschedule",
+      "name": "IA Remarcacao",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Preparar Contexto').item.json;\nconst raw = $json.text || '';\nlet parsed;\ntry {\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(m ? m[0] : raw);\n} catch(e) { parsed = { status: 'collecting', reply: 'Para quando voce gostaria de remarcar?' }; }\n\nreturn [{ json: { ...ctx, reschedule_data: parsed } }];"
+      },
+      "id": "parse-result",
+      "name": "Processar Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ready",
+              "leftValue": "={{ $json.reschedule_data.status }}",
+              "rightValue": "ready",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "should-update",
+      "name": "Pronto para Atualizar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1740, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $json;\nconst rd = ctx.reschedule_data;\nconst appt = ctx.current_appointment;\nconst start = new Date(`${rd.new_date}T${rd.new_time}:00`);\nconst duration = new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime();\nconst end = new Date(start.getTime() + duration);\nreturn [{ json: { ...ctx, new_starts_at: start.toISOString(), new_ends_at: end.toISOString() } }];"
+      },
+      "id": "compute-new-times",
+      "name": "Calcular Novos Horarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 140]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?tenant_id=eq.{{ $json.tenant.id }}&barber_id=eq.{{ $json.current_appointment.barber_id }}&id=neq.{{ $json.current_appointment.id }}&status=in.(scheduled,confirmed)&starts_at=gte.{{ $json.new_starts_at }}&starts_at=lt.{{ $json.new_ends_at }}&select=id,starts_at&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-conflict",
+      "name": "Verificar Conflito",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2180, 140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "no-conflict",
+              "leftValue": "={{ Array.isArray($json) ? $json.length : 0 }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-conflict-result",
+      "name": "Sem Conflito",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [2400, 140]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?id=eq.{{ $('Calcular Novos Horarios').item.json.current_appointment.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ starts_at: $('Calcular Novos Horarios').item.json.new_starts_at, ends_at: $('Calcular Novos Horarios').item.json.new_ends_at }) }}",
+        "options": {}
+      },
+      "id": "update-appointment",
+      "name": "Atualizar Agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2620, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Calcular Novos Horarios').item.json;\nconst startStr = new Date(ctx.new_starts_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });\nreturn [{ json: { ...ctx, reply_text: `Reagendado com sucesso! Novo horario: ${startStr} com ${ctx.current_appointment.barbers?.name || 'barbeiro'}. Ate la!` } }];"
+      },
+      "id": "success-msg",
+      "name": "Mensagem Sucesso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2840, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Calcular Novos Horarios').item.json;\nreturn [{ json: { ...ctx, reply_text: 'Este horario ja esta ocupado. Por favor, escolha outro horario.' } }];"
+      },
+      "id": "conflict-msg",
+      "name": "Mensagem Conflito",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2620, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Processar Resultado').item.json;\nreturn [{ json: { ...ctx, reply_text: ctx.reschedule_data.reply || 'Para quando voce quer remarcar?' } }];"
+      },
+      "id": "collecting-msg",
+      "name": "Mensagem Coletando",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$('Parse Payload').item.json, reply_text: 'Nao encontrei nenhum agendamento ativo. Deseja marcar um novo horario?' } }];"
+      },
+      "id": "no-appointment",
+      "name": "Sem Agendamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ conversation_id: $json.conversation_id, tenant_id: $json.tenant.id, role: 'assistant', content: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "save-reply",
+      "name": "Salvar Resposta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3060, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $('Parse Payload').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Parse Payload').item.json.sender_phone_full, text: $json.reply_text || '' }) }}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3280, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json } }];"
+      },
+      "id": "merge",
+      "name": "Preparar Envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2840, 240]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Agendamento", "type": "main", "index": 0 }]] },
+    "Buscar Agendamento": { "main": [[{ "node": "Tem Agendamento", "type": "main", "index": 0 }]] },
+    "Tem Agendamento": {
+      "main": [
+        [{ "node": "Preparar Contexto", "type": "main", "index": 0 }],
+        [{ "node": "Sem Agendamento", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preparar Contexto": { "main": [[{ "node": "IA Remarcacao", "type": "main", "index": 0 }]] },
+    "IA Remarcacao": { "main": [[{ "node": "Processar Resultado", "type": "main", "index": 0 }]] },
+    "Processar Resultado": { "main": [[{ "node": "Pronto para Atualizar", "type": "main", "index": 0 }]] },
+    "Pronto para Atualizar": {
+      "main": [
+        [{ "node": "Calcular Novos Horarios", "type": "main", "index": 0 }],
+        [{ "node": "Mensagem Coletando", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calcular Novos Horarios": { "main": [[{ "node": "Verificar Conflito", "type": "main", "index": 0 }]] },
+    "Verificar Conflito": { "main": [[{ "node": "Sem Conflito", "type": "main", "index": 0 }]] },
+    "Sem Conflito": {
+      "main": [
+        [{ "node": "Atualizar Agendamento", "type": "main", "index": 0 }],
+        [{ "node": "Mensagem Conflito", "type": "main", "index": 0 }]
+      ]
+    },
+    "Atualizar Agendamento": { "main": [[{ "node": "Mensagem Sucesso", "type": "main", "index": 0 }]] },
+    "Mensagem Sucesso": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Mensagem Conflito": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Mensagem Coletando": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Sem Agendamento": { "main": [[{ "node": "Preparar Envio", "type": "main", "index": 0 }]] },
+    "Preparar Envio": { "main": [[{ "node": "Salvar Resposta", "type": "main", "index": 0 }]] },
+    "Salvar Resposta": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
+  }
+}

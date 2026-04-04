@@ -1,0 +1,320 @@
+{
+  "name": "Commercial — Router Cliente",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];"
+      },
+      "id": "parse",
+      "name": "Parse Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenant_ai_settings?tenant_id=eq.{{ $json.tenant.id }}&select=*&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-ai-settings",
+      "name": "Carregar AI Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenant_booking_settings?tenant_id=eq.{{ $('Parse Payload').item.json.tenant.id }}&select=*&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-booking-settings",
+      "name": "Carregar Booking Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/services?tenant_id=eq.{{ $('Parse Payload').item.json.tenant.id }}&is_active=eq.true&select=id,name,price,duration_minutes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-services",
+      "name": "Carregar Servicos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/barbers?tenant_id=eq.{{ $('Parse Payload').item.json.tenant.id }}&is_active=eq.true&select=id,name,specialties,google_calendar_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-barbers",
+      "name": "Carregar Barbeiros",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse Payload').item.json;\nconst aiRaw = $('Carregar AI Settings').item.json;\nconst bookingRaw = $('Carregar Booking Settings').item.json;\nconst servicesRaw = $('Carregar Servicos').item.json;\nconst barbersRaw = $('Carregar Barbeiros').item.json;\n\nconst ai = Array.isArray(aiRaw) && aiRaw.length > 0 ? aiRaw[0] : (aiRaw || {});\nconst booking = Array.isArray(bookingRaw) && bookingRaw.length > 0 ? bookingRaw[0] : (bookingRaw || {});\nconst services = Array.isArray(servicesRaw) ? servicesRaw : [];\nconst barbers = Array.isArray(barbersRaw) ? barbersRaw : [];\n\n// Check business hours\nconst now = new Date();\nconst hours = ctx.tenant.opening_hours || {};\nconst dayNames = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];\nconst today = dayNames[now.getDay()];\nlet isOpen = true;\n\nif (hours[today]) {\n  const h = hours[today];\n  if (!h.isOpen) {\n    isOpen = false;\n  } else {\n    const currentTime = now.getHours() * 60 + now.getMinutes();\n    const openParts = (h.open || '09:00').split(':').map(Number);\n    const closeParts = (h.close || '18:00').split(':').map(Number);\n    const openMin = openParts[0] * 60 + openParts[1];\n    const closeMin = closeParts[0] * 60 + closeParts[1];\n    if (currentTime < openMin || currentTime > closeMin) {\n      isOpen = false;\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...ctx,\n    ai_settings: ai,\n    booking_settings: booking,\n    services,\n    barbers,\n    is_open: isOpen\n  }\n}];"
+      },
+      "id": "build-context",
+      "name": "Montar Contexto Completo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "check-open",
+              "leftValue": "={{ $json.is_open }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-hours",
+      "name": "Dentro do Horario",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1740, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Montar Contexto Completo').item.json;\nconst ai = ctx.ai_settings || {};\nconst msg = ai.out_of_hours_message || 'Ola! No momento estamos fora do horario de atendimento. Retornaremos em breve!';\nreturn [{ json: { ...ctx, reply_text: msg } }];"
+      },
+      "id": "out-of-hours",
+      "name": "Resposta Fora do Horario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $('Parse Payload').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Parse Payload').item.json.sender_phone_full, text: $json.reply_text }) }}",
+        "options": {}
+      },
+      "id": "send-out-of-hours",
+      "name": "Enviar Fora do Horario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2180, 440]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "=Voce e um classificador de intencao para uma barbearia.\nClassifique a mensagem do cliente em UMA das categorias:\n- info\n- booking\n- reschedule\n- cancel\n- greeting\n\nResponda APENAS com a palavra da categoria, sem explicacao, sem pontuacao.\n\nMensagem: {{ $('Montar Contexto Completo').item.json.message_text }}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 10
+        }
+      },
+      "id": "classify-intent",
+      "name": "Classificar Intencao",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1960, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Montar Contexto Completo').item.json;\nconst raw = ($('Classificar Intencao').item.json.text || '').trim().toLowerCase().replace(/[^a-z]/g, '');\n\nlet intent = 'info';\nif (raw === 'booking' || raw.includes('book') || raw.includes('agenda')) intent = 'booking';\nelse if (raw === 'reschedule' || raw.includes('remarc')) intent = 'reschedule';\nelse if (raw === 'cancel' || raw.includes('cancel')) intent = 'cancel';\nelse if (raw === 'greeting' || raw.includes('greet') || raw.includes('sauda')) intent = 'greeting';\nelse intent = 'info';\n\nreturn [{ json: { ...ctx, intent } }];"
+      },
+      "id": "parse-intent",
+      "name": "Interpretar Intencao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2180, 200]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ ['info','greeting'].includes($json.intent) ? 0 : $json.intent === 'booking' ? 1 : $json.intent === 'reschedule' ? 2 : $json.intent === 'cancel' ? 3 : 0 }}"
+      },
+      "id": "switch-intent",
+      "name": "Switch Intencao",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [2400, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $env.WORKFLOW_CUSTOMER_INFO }}",
+          "mode": "expression"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "call-info",
+      "name": "Info Flow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2640, 60]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $env.WORKFLOW_CUSTOMER_BOOKING }}",
+          "mode": "expression"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "call-booking",
+      "name": "Booking Flow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2640, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $env.WORKFLOW_CUSTOMER_RESCHEDULE }}",
+          "mode": "expression"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "call-reschedule",
+      "name": "Reschedule Flow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2640, 340]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $env.WORKFLOW_CUSTOMER_CANCEL }}",
+          "mode": "expression"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "call-cancel",
+      "name": "Cancel Flow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2640, 460]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]]
+    },
+    "Parse Payload": {
+      "main": [[{ "node": "Carregar AI Settings", "type": "main", "index": 0 }]]
+    },
+    "Carregar AI Settings": {
+      "main": [[{ "node": "Carregar Booking Settings", "type": "main", "index": 0 }]]
+    },
+    "Carregar Booking Settings": {
+      "main": [[{ "node": "Carregar Servicos", "type": "main", "index": 0 }]]
+    },
+    "Carregar Servicos": {
+      "main": [[{ "node": "Carregar Barbeiros", "type": "main", "index": 0 }]]
+    },
+    "Carregar Barbeiros": {
+      "main": [[{ "node": "Montar Contexto Completo", "type": "main", "index": 0 }]]
+    },
+    "Montar Contexto Completo": {
+      "main": [[{ "node": "Dentro do Horario", "type": "main", "index": 0 }]]
+    },
+    "Dentro do Horario": {
+      "main": [
+        [{ "node": "Classificar Intencao", "type": "main", "index": 0 }],
+        [{ "node": "Resposta Fora do Horario", "type": "main", "index": 0 }]
+      ]
+    },
+    "Resposta Fora do Horario": {
+      "main": [[{ "node": "Enviar Fora do Horario", "type": "main", "index": 0 }]]
+    },
+    "Classificar Intencao": {
+      "main": [[{ "node": "Interpretar Intencao", "type": "main", "index": 0 }]]
+    },
+    "Interpretar Intencao": {
+      "main": [[{ "node": "Switch Intencao", "type": "main", "index": 0 }]]
+    },
+    "Switch Intencao": {
+      "main": [
+        [{ "node": "Info Flow", "type": "main", "index": 0 }],
+        [{ "node": "Booking Flow", "type": "main", "index": 0 }],
+        [{ "node": "Reschedule Flow", "type": "main", "index": 0 }],
+        [{ "node": "Cancel Flow", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
