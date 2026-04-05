@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
   Clock, User, Scissors, X, Loader2, Check, AlertCircle,
   CheckCircle2, PlayCircle, XCircle, UserX, ChevronDown,
-  ChevronUp, Sparkles,
+  ChevronUp, Sparkles, Info,
 } from 'lucide-react';
 import {
   format, addDays, subDays, startOfWeek, endOfWeek, eachDayOfInterval,
@@ -19,6 +19,7 @@ import {
   Customer,
   Service,
   AppointmentStatus,
+  ClientPreferences,
 } from '@/services/crudService';
 import { useTenant } from '@/hooks/useTenant';
 
@@ -620,7 +621,16 @@ export default function CalendarPage() {
                                 {app.clients?.name?.charAt(0).toUpperCase() ?? '?'}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-primary truncate">{app.clients?.name}</p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm font-semibold text-primary truncate">{app.clients?.name}</p>
+                                  <button
+                                    onClick={() => openEditModal(app)}
+                                    title="Detalhes"
+                                    className="p-1 rounded-md text-faint hover:text-gold hover:bg-gold/10 transition-all shrink-0"
+                                  >
+                                    <Info size={13} />
+                                  </button>
+                                </div>
                                 <p className="text-[10px] text-muted truncate">{app.services?.name}</p>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-[10px] font-mono text-faint flex items-center gap-1">
@@ -653,13 +663,7 @@ export default function CalendarPage() {
                                   <qa.icon size={10} /> {qa.label}
                                 </button>
                               ))}
-                              {/* Edit full modal */}
-                              <button
-                                onClick={() => openEditModal(app)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-bold uppercase tracking-wider text-faint hover:text-muted hover:border-border2 transition-all"
-                              >
-                                <Scissors size={10} /> Detalhes
-                              </button>
+
                             </div>
                           </div>
                         );
@@ -807,6 +811,47 @@ export default function CalendarPage() {
                     placeholder="Ex: Prefere tesoura, alergia a produto X..."
                   />
                 </div>
+
+                {/* Preferências do cliente (read-only, exibido apenas quando existem dados) */}
+                {selectedCustomer && (() => {
+                  const cust = customers.find(c => c.id === selectedCustomer);
+                  const prefs = cust?.preferences as ClientPreferences | undefined;
+                  if (!prefs || Object.keys(prefs).length === 0) return null;
+                  return (
+                    <div className="bg-gold/5 border border-gold/15 rounded-xl p-4 space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                        <Sparkles size={10} /> Preferências do Cliente
+                      </p>
+                      <div className="space-y-1.5">
+                        {prefs.corte_preferido && (
+                          <p className="text-xs text-primary flex items-center gap-2">
+                            <span className="text-gold">💇</span> <span className="text-faint font-bold">Corte:</span> {prefs.corte_preferido}
+                          </p>
+                        )}
+                        {prefs.barba && (
+                          <p className="text-xs text-primary flex items-center gap-2">
+                            <span className="text-gold">🧔</span> <span className="text-faint font-bold">Barba:</span> {prefs.barba}
+                          </p>
+                        )}
+                        {prefs.barbeiro_favorito && (
+                          <p className="text-xs text-primary flex items-center gap-2">
+                            <span className="text-gold">⭐</span> <span className="text-faint font-bold">Barbeiro fav.:</span> {prefs.barbeiro_favorito}
+                          </p>
+                        )}
+                        {prefs.alergias && prefs.alergias.length > 0 && (
+                          <p className="text-xs text-orange-300 flex items-center gap-2">
+                            <span>⚠️</span> <span className="text-faint font-bold">Alergias:</span> {prefs.alergias.join(', ')}
+                          </p>
+                        )}
+                        {prefs.observacoes && (
+                          <p className="text-xs text-muted flex items-center gap-2">
+                            <span className="text-gold">📝</span> {prefs.observacoes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Status — visible for both new and existing (new defaults to scheduled) */}
                 <div className="space-y-2">

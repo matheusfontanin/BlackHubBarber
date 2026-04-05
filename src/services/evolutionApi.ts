@@ -13,6 +13,7 @@ interface ApiResponse {
   base64?: string;
   code?: string;
   error?: string;
+  instance?: { state?: 'open' | 'connecting' | 'close' };
   [key: string]: unknown;
 }
 

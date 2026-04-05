@@ -12,45 +12,9 @@ import {
   Scissors,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const STATS = [
-  {
-    label: 'Faturamento Mensal',
-    value: 'R$ 12.450',
-    change: '+12.5%',
-    positive: true,
-    icon: DollarSign,
-    iconColor: 'text-gold',
-    iconBg: 'bg-gold/10 border border-gold/20',
-  },
-  {
-    label: 'Novos Clientes',
-    value: '48',
-    change: '+8.2%',
-    positive: true,
-    icon: Users,
-    iconColor: 'text-blue-400',
-    iconBg: 'bg-blue-500/10 border border-blue-500/20',
-  },
-  {
-    label: 'Agendamentos IA',
-    value: '156',
-    change: '+24.1%',
-    positive: true,
-    icon: MessageSquare,
-    iconColor: 'text-purple-400',
-    iconBg: 'bg-purple-500/10 border border-purple-500/20',
-  },
-  {
-    label: 'Taxa de Conversão',
-    value: '64%',
-    change: '+3.4%',
-    positive: true,
-    icon: TrendingUp,
-    iconColor: 'text-emerald-400',
-    iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
-  },
-];
+import { useEffect, useState } from 'react';
+import { useTenant } from '@/hooks/useTenant';
+import { statsService, type AIUsageStats } from '@/services/statsService';
 
 const RECENT_APPOINTMENTS = [
   { id: 1, client: 'João Silva', service: 'Corte Degradê', time: '14:30', status: 'confirmed' as const, price: 'R$ 50', initials: 'JS' },
@@ -78,7 +42,58 @@ const TOP_BARBERS = [
   { name: 'Bruno Costa', appointments: 31, revenue: 'R$ 3.100', initials: 'BC' },
 ];
 
+
 export default function DashboardPage() {
+  const { tenantId } = useTenant();
+  const [aiStats, setAiStats] = useState<AIUsageStats | null>(null);
+
+  useEffect(() => {
+    if (tenantId) {
+      statsService.getAIUsageStats(tenantId).then(setAiStats);
+    }
+  }, [tenantId]);
+
+  const stats = [
+    {
+      label: 'Faturamento Mensal',
+      value: 'R$ 12.450',
+      change: '+12.5%',
+      positive: true,
+      icon: DollarSign,
+      iconColor: 'text-gold',
+      iconBg: 'bg-gold/10 border border-gold/20',
+    },
+    {
+      label: 'Novos Clientes',
+      value: '48',
+      change: '+8.2%',
+      positive: true,
+      icon: Users,
+      iconColor: 'text-blue-400',
+      iconBg: 'bg-blue-500/10 border border-blue-500/20',
+    },
+    {
+      label: 'Agendamentos IA',
+      value: aiStats?.total_interactions?.toString() || '0',
+      change: '+24.1%',
+      positive: true,
+      icon: MessageSquare,
+      iconColor: 'text-purple-400',
+      iconBg: 'bg-purple-500/10 border border-purple-500/20',
+    },
+    {
+      label: 'Custo IA (R$)',
+      value: aiStats?.total_cost_brl 
+        ? `R$ ${aiStats.total_cost_brl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : 'R$ 0,00',
+      change: aiStats?.total_tokens ? `${(aiStats.total_tokens / 1000).toFixed(1)}k tokens` : '0 tokens',
+      positive: false,
+      icon: Sparkles,
+      iconColor: 'text-emerald-400',
+      iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
+    },
+  ];
+
   const today = new Date();
   const dayName = today.toLocaleDateString('pt-BR', { weekday: 'long' });
   const dateStr = today.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -98,7 +113,8 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-8">
-        {STATS.map((stat, i) => (
+        {stats.map((stat, i) => (
+
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 16 }}

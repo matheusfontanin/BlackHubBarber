@@ -213,4 +213,22 @@
     opacity: 0.4;
     z-index: 0;
   }
+
+  /* Chat bubble variants */
+  .chat-bubble-client {
+    @apply bg-surface border border-border2 rounded-2xl rounded-bl-md
+           px-4 py-2.5 text-sm text-primary max-w-[75%];
+  }
+  .chat-bubble-ai {
+    @apply bg-gold/10 border border-gold/20 rounded-2xl rounded-br-md
+           px-4 py-2.5 text-sm text-primary max-w-[75%];
+  }
+  .chat-bubble-owner {
+    @apply bg-blue-950/40 border border-blue-500/20 rounded-2xl rounded-br-md
+           px-4 py-2.5 text-sm text-primary max-w-[75%];
+  }
+  .chat-bubble-system {
+    @apply bg-surface2/50 border border-border rounded-xl
+           px-3 py-1.5 text-xs text-faint max-w-[60%] italic;
+  }
 }

@@ -1,0 +1,108 @@
+{
+  "name": "Commercial — Master Auto-Pilot (Self-Contained)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "commercial-inbound",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "id": "node_webhook_main",
+      "name": "Webhook Inbound"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "SUPABASE_URL",
+              "stringValue": "https://lvfwkaakwcqutirnjsuu.supabase.co"
+            },
+            {
+              "name": "EVOLUTION_API_URL",
+              "stringValue": "https://vps55146.publiccloud.com.br"
+            },
+            {
+              "name": "WHATSAPP_INSTANCE",
+              "stringValue": "whatsmaumee"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [220, 0],
+      "id": "node_config",
+      "name": "GLOBAL_CONFIG"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalizar entrada da Evolution API\nconst body = $node[\"Webhook Inbound\"].json.body;\nconst remoteJid = body.data.key.remoteJid;\nconst messageText = body.data.message.conversation || body.data.message.extendedTextMessage?.text || \"\";\n\nreturn {\n  remoteJid,\n  messageText,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [440, 0],
+      "id": "node_normalize",
+      "name": "Normalize Payload"
+    },
+    {
+      "parameters": {
+        "resource": "databaseTable",
+        "operation": "select",
+        "table": {
+          "__rls": true,
+          "value": "tenants"
+        },
+        "returnAll": false,
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "key": "whatsapp_instance",
+              "operator": "eq",
+              "value": "={{ $node[\"GLOBAL_CONFIG\"].json.WHATSAPP_INSTANCE }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [660, 0],
+      "id": "node_get_tenant",
+      "name": "Get Tenant Info"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "prompt": "={{ $json.ai_personality }}\\n\\nDado a mensagem do usuário: \"{{ $node[\"Normalize Payload\"].json.messageText }}\"\\nClassifique a intenção em: AGENDAR, REMARCAR, CANCELAR, INFORMAÇÃO.\\nResponda apenas com a palavra.",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [880, 0],
+      "id": "node_intent_ia",
+      "name": "Classificar Intent IA"
+    }
+  ],
+  "connections": {
+    "node_webhook_main": {
+      "main": [[{"node": "node_config", "type": "main" , "index": 0}]]
+    },
+    "node_config": {
+      "main": [[{"node": "node_normalize", "type": "main" , "index": 0}]]
+    },
+    "node_normalize": {
+      "main": [[{"node": "node_get_tenant", "type": "main" , "index": 0}]]
+    },
+    "node_get_tenant": {
+      "main": [[{"node": "node_intent_ia", "type": "main" , "index": 0}]]
+    }
+  }
+}

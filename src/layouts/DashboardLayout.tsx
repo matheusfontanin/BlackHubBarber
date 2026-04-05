@@ -38,6 +38,7 @@ export default function DashboardLayout() {
     { icon: Calendar, label: 'Agenda', path: '/calendar' },
     { icon: Users, label: 'Clientes', path: '/customers' },
     { icon: Scissors, label: 'Serviços', path: '/services' },
+    { icon: MessageSquare, label: 'Chat', path: '/chat' },
   ];
 
   const bottomItems = [

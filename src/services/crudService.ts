@@ -10,6 +10,16 @@ export interface Service {
   is_active?: boolean;
 }
 
+export interface ClientPreferences {
+  corte_preferido?: string;
+  barba?: string;
+  barbeiro_favorito?: string;
+  produtos?: string[];
+  alergias?: string[];
+  observacoes?: string;
+  ultima_atualizacao_ia?: string;
+}
+
 export interface Customer {
   id?: string;
   name: string;
@@ -17,6 +27,15 @@ export interface Customer {
   email?: string;
   notes?: string;
   tenant_id: string;
+  instagram_handle?: string;
+  birthday?: string;
+  preferences?: ClientPreferences;
+  last_visit_at?: string;
+  total_visits?: number;
+  total_spent?: number;
+  loyalty_points?: number;
+  tags?: string[];
+  source?: string;
 }
 
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'no_show' | 'canceled';

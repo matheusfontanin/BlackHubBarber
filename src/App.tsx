@@ -8,6 +8,7 @@ import CalendarPage from '@/pages/calendar/CalendarPage';
 import ServicesPage from '@/pages/services/ServicesPage';
 import CustomersPage from '@/pages/customers/CustomersPage';
 import SettingsPage from '@/pages/settings/SettingsPage';
+import ChatPage from '@/pages/chat/ChatPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import DashboardLayout from '@/layouts/DashboardLayout';
@@ -70,7 +71,7 @@ export default function App() {
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/ia" element={<div className="p-8"><h1 className="text-4xl font-heading font-medium tracking-tight">Atendimento IA (Em breve)</h1></div>} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/finance" element={<div className="p-8"><h1 className="text-4xl font-heading font-medium tracking-tight">Financeiro (Em breve)</h1></div>} />
           </Route>
 
