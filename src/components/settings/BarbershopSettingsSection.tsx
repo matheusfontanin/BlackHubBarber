@@ -156,7 +156,7 @@ export default function BarbershopSettingsSection() {
         <button
           type="submit"
           disabled={saving}
-          className="py-3 px-6 bg-primary text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+          className="btn-gold flex items-center justify-center gap-2"
         >
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
           {saved ? 'Salvo com sucesso!' : 'Salvar Alterações'}

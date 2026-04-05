@@ -107,7 +107,7 @@ export default function TeamSettingsSection() {
         </h2>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all"
+          className="btn-gold flex items-center gap-2"
         >
           <UserPlus size={16} />
           Novo Barbeiro
@@ -154,7 +154,7 @@ export default function TeamSettingsSection() {
                 >
                   {barber.is_active ? <UserCheck size={15} /> : <UserX size={15} />}
                 </button>
-                <button onClick={() => openEdit(barber)} className="p-2 text-primary/30 hover:text-primary hover:bg-white rounded-lg transition-all">
+                <button onClick={() => openEdit(barber)} className="p-2 text-primary/30 hover:text-primary hover:bg-white/10 rounded-lg transition-all">
                   <Edit size={15} />
                 </button>
                 <button onClick={() => handleDelete(barber.id!)} className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
@@ -171,7 +171,7 @@ export default function TeamSettingsSection() {
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative z-10">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="bg-surface border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative z-10">
               <div className="p-6 border-b border-primary/[0.06] flex justify-between items-center">
                 <h3 className="font-heading font-medium tracking-tight text-lg text-primary">{editing ? 'Editar Barbeiro' : 'Novo Barbeiro'}</h3>
                 <button onClick={() => setModalOpen(false)} className="p-1.5 text-primary/30 hover:text-primary hover:bg-bg rounded-lg transition-all"><X size={18} /></button>
@@ -227,7 +227,7 @@ export default function TeamSettingsSection() {
                   <button onClick={() => setModalOpen(false)} className="flex-1 py-3 border border-primary/10 text-primary rounded-xl font-semibold text-sm flex items-center justify-center hover:bg-bg transition-all">
                     Cancelar
                   </button>
-                  <button onClick={handleSave} disabled={submitting || !name.trim()} className="flex-[2] py-3 bg-primary text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50">
+                  <button onClick={handleSave} disabled={submitting || !name.trim()} className="btn-gold flex-[2] flex items-center justify-center gap-2">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
                     {editing ? 'Salvar' : 'Criar Barbeiro'}
                   </button>

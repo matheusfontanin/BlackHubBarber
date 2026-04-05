@@ -186,7 +186,7 @@ export default function BookingSettingsSection() {
 
       {/* Save */}
       <div className="pt-4 border-t border-primary/[0.06]">
-        <button type="submit" disabled={saving} className="py-3 px-6 bg-primary text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50">
+        <button type="submit" disabled={saving} className="btn-gold flex items-center justify-center gap-2">
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
           {saved ? 'Salvo com sucesso!' : 'Salvar Regras'}
         </button>

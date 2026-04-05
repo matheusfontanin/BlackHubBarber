@@ -22,7 +22,7 @@ export default function FinalStep({ onComplete, onBack }: FinalStepProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Free Plan */}
-        <div className="p-8 bg-white border border-primary/10 rounded-2xl shadow-sm space-y-6 relative overflow-hidden group">
+        <div className="p-8 bg-surface border border-border rounded-2xl shadow-sm space-y-6 relative overflow-hidden group">
           <div className="space-y-2">
             <h3 className="text-xl font-serif text-primary">Plano Essencial</h3>
             <div className="flex items-baseline gap-1">
@@ -55,7 +55,7 @@ export default function FinalStep({ onComplete, onBack }: FinalStepProps) {
         </div>
 
         {/* Pro Plan */}
-        <div className="p-8 bg-primary text-white border border-primary rounded-2xl shadow-xl space-y-6 relative overflow-hidden group">
+        <div className="p-8 bg-surface2 border border-gold/50 rounded-2xl shadow-xl space-y-6 relative overflow-hidden group">
           <div className="absolute top-4 right-4 bg-secondary text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest">
             Recomendado
           </div>
@@ -89,7 +89,7 @@ export default function FinalStep({ onComplete, onBack }: FinalStepProps) {
 
           <button
             onClick={onComplete}
-            className="w-full py-3 bg-secondary text-primary rounded-lg text-sm font-bold hover:scale-[1.02] transition-all active:scale-95"
+            className="w-full btn-gold"
           >
             Assinar Agora
           </button>
