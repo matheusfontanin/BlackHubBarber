@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
@@ -21,7 +22,26 @@ import {
   AppointmentStatus,
   ClientPreferences,
 } from '@/services/crudService';
+import { getActiveBarbers } from '@/services/teamService';
+import type { Barber } from '@/types/settings';
 import { useTenant } from '@/hooks/useTenant';
+
+/** Deterministic color per barber id for visual coding across the grid */
+const BARBER_PALETTE = [
+  { dot: 'bg-emerald-400', ring: 'ring-emerald-400/40', text: 'text-emerald-300', bg: 'bg-emerald-950/60', border: 'border-emerald-500/30' },
+  { dot: 'bg-blue-400',    ring: 'ring-blue-400/40',    text: 'text-blue-300',    bg: 'bg-blue-950/60',    border: 'border-blue-500/30' },
+  { dot: 'bg-purple-400',  ring: 'ring-purple-400/40',  text: 'text-purple-300',  bg: 'bg-purple-950/60',  border: 'border-purple-500/30' },
+  { dot: 'bg-pink-400',    ring: 'ring-pink-400/40',    text: 'text-pink-300',    bg: 'bg-pink-950/60',    border: 'border-pink-500/30' },
+  { dot: 'bg-orange-400',  ring: 'ring-orange-400/40',  text: 'text-orange-300',  bg: 'bg-orange-950/60',  border: 'border-orange-500/30' },
+  { dot: 'bg-cyan-400',    ring: 'ring-cyan-400/40',    text: 'text-cyan-300',    bg: 'bg-cyan-950/60',    border: 'border-cyan-500/30' },
+];
+
+function barberColor(id: string | undefined, all: Barber[]) {
+  if (!id) return BARBER_PALETTE[0];
+  const idx = all.findIndex(b => b.id === id);
+  if (idx < 0) return BARBER_PALETTE[0];
+  return BARBER_PALETTE[idx % BARBER_PALETTE.length];
+}
 
 /* ─────────────────────────────────────────────────────── */
 /* Constants                                               */
@@ -110,13 +130,23 @@ const QUICK_ACTIONS: QuickAction[] = [
 
 export default function CalendarPage() {
   const { tenantId, loading: tenantLoading } = useTenant();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Calendar state ──
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<View>('week');
+  const [view, setView] = useState<View>(() => {
+    // Default to 'day' on mobile (no room for a 7-col grid), 'week' on desktop
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+      return 'day';
+    }
+    return 'week';
+  });
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  /** 'all' => no filter, otherwise a barber UUID */
+  const [selectedBarberId, setSelectedBarberId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
   // ── Modal state ──
@@ -127,6 +157,7 @@ export default function CalendarPage() {
   const [appointmentDate, setAppointmentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [appointmentTime, setAppointmentTime] = useState('09:00');
   const [appointmentNotes, setAppointmentNotes] = useState('');
+  const [appointmentBarberId, setAppointmentBarberId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   // local status used only inside the modal (decoupled from selectedAppointment.status)
@@ -157,14 +188,16 @@ export default function CalendarPage() {
         start = format(startOfMonth(currentDate), "yyyy-MM-dd'T'00:00:00'Z'");
         end   = format(endOfMonth(currentDate),   "yyyy-MM-dd'T'23:59:59'Z'");
       }
-      const [apps, custs, servs] = await Promise.all([
+      const [apps, custs, servs, brbs] = await Promise.all([
         crudService.getAppointments(tenantId, start, end),
         crudService.getCustomers(tenantId),
         crudService.getServices(tenantId),
+        getActiveBarbers(tenantId).catch(() => [] as Barber[]),
       ]);
       setAppointments(apps);
       setCustomers(custs);
       setServices(servs);
+      setBarbers(brbs);
     } catch (err) {
       console.error('Erro ao buscar dados da agenda:', err);
     } finally {
@@ -176,6 +209,17 @@ export default function CalendarPage() {
 
   /* Keep panelDate in sync with currentDate */
   useEffect(() => { setPanelDate(currentDate); }, [currentDate]);
+
+  /* Deep-link: ?new=1 opens the new-appointment modal once */
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      openNewModal();
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── Navigation ── */
   const navigateDate = (dir: 'prev' | 'next') => {
@@ -212,6 +256,8 @@ export default function CalendarPage() {
     setModalStatus('scheduled');
     setAppointmentDate(format(date ?? new Date(), 'yyyy-MM-dd'));
     setAppointmentTime(hour !== undefined ? `${String(hour).padStart(2, '0')}:00` : '09:00');
+    // Pre-select the currently filtered barber if any; otherwise empty
+    setAppointmentBarberId(selectedBarberId !== 'all' ? selectedBarberId : '');
     setIsModalOpen(true);
   };
 
@@ -222,6 +268,7 @@ export default function CalendarPage() {
     setAppointmentDate(format(parseISO(app.starts_at), 'yyyy-MM-dd'));
     setAppointmentTime(format(parseISO(app.starts_at), 'HH:mm'));
     setAppointmentNotes(app.notes ?? '');
+    setAppointmentBarberId(app.barber_id ?? '');
     setModalStatus(app.status);   // ← seed modal-local status from appointment
     setFormError(null);
     setIsModalOpen(true);
@@ -247,6 +294,7 @@ export default function CalendarPage() {
         tenant_id:  tenantId,
         client_id:  selectedCustomer,
         service_id: selectedService,
+        barber_id:  appointmentBarberId || undefined,
         starts_at:  startTime.toISOString(),
         ends_at:    endTime.toISOString(),
         status:     modalStatus,          // ← persist the locally-chosen status
@@ -295,8 +343,13 @@ export default function CalendarPage() {
     }
   };
 
+  /* ── Visible appointments (after barber filter) ── */
+  const visibleAppointments = selectedBarberId === 'all'
+    ? appointments
+    : appointments.filter(a => a.barber_id === selectedBarberId);
+
   /* ── Panel appointments (for the selected panel date) ── */
-  const panelAppointments = appointments
+  const panelAppointments = visibleAppointments
     .filter(a => isSameDay(parseISO(a.starts_at), panelDate))
     .sort((a, b) => parseISO(a.starts_at).getTime() - parseISO(b.starts_at).getTime());
 
@@ -310,70 +363,110 @@ export default function CalendarPage() {
      RENDER
   ═══════════════════════════════════════════════════════ */
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">
 
       {/* ── Page Header ── */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div className="space-y-3">
-          <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Agenda</h1>
-          <div className="flex flex-wrap items-center gap-2">
-
-            {/* View toggle */}
-            <div className="flex bg-sidebar border border-border rounded-xl p-1">
-              {(['day', 'week', 'month'] as View[]).map(v => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className={cn(
-                    'px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all',
-                    view === v
-                      ? 'bg-gold text-sidebar shadow-[0_1px_8px_rgba(201,168,76,0.35)]'
-                      : 'text-muted hover:text-primary',
-                  )}
-                >
-                  {v === 'day' ? 'Dia' : v === 'week' ? 'Semana' : 'Mês'}
-                </button>
-              ))}
-            </div>
-
-            {/* Navigation */}
-            <div className="flex items-center gap-1.5 bg-sidebar border border-border rounded-xl px-3 py-2">
-              <button
-                onClick={() => navigateDate('prev')}
-                className="p-1 hover:text-gold text-muted transition-colors rounded"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-[11px] font-bold uppercase tracking-wider min-w-[160px] text-center text-primary capitalize">
-                {periodLabel()}
-              </span>
-              <button
-                onClick={() => navigateDate('next')}
-                className="p-1 hover:text-gold text-muted transition-colors rounded"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-
-            <button
-              onClick={() => setCurrentDate(new Date())}
-              className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest bg-sidebar border border-border rounded-xl text-muted hover:text-gold hover:border-gold/30 transition-all"
-            >
-              Hoje
-            </button>
-          </div>
+      <header className="flex flex-col gap-4 mb-5 lg:mb-6">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Agenda</h1>
+          <button
+            onClick={() => openNewModal()}
+            className="btn-gold hidden lg:flex items-center gap-2 shrink-0"
+          >
+            <Plus size={16} /> Novo Agendamento
+          </button>
         </div>
 
-        <button
-          onClick={() => openNewModal()}
-          className="btn-gold flex items-center gap-2"
-        >
-          <Plus size={16} /> Novo Agendamento
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View toggle — week hidden on mobile */}
+          <div className="flex bg-sidebar border border-border rounded-xl p-1">
+            {(['day', 'week', 'month'] as View[]).map(v => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={cn(
+                  'px-3 sm:px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all',
+                  v === 'week' && 'hidden lg:inline-block',
+                  view === v
+                    ? 'bg-gold text-sidebar shadow-[0_1px_8px_rgba(201,168,76,0.35)]'
+                    : 'text-muted hover:text-primary',
+                )}
+              >
+                {v === 'day' ? 'Dia' : v === 'week' ? 'Semana' : 'Mês'}
+              </button>
+            ))}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-1.5 bg-sidebar border border-border rounded-xl px-2 sm:px-3 py-2 flex-1 sm:flex-none">
+            <button
+              onClick={() => navigateDate('prev')}
+              className="p-1 hover:text-gold text-muted transition-colors rounded shrink-0"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-[11px] font-bold uppercase tracking-wider flex-1 sm:min-w-[160px] text-center text-primary capitalize truncate">
+              {periodLabel()}
+            </span>
+            <button
+              onClick={() => navigateDate('next')}
+              className="p-1 hover:text-gold text-muted transition-colors rounded shrink-0"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setCurrentDate(new Date())}
+            className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest bg-sidebar border border-border rounded-xl text-muted hover:text-gold hover:border-gold/30 transition-all"
+          >
+            Hoje
+          </button>
+        </div>
+
+        {/* ── Barber filter tabs ── */}
+        {barbers.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+            <button
+              onClick={() => setSelectedBarberId('all')}
+              className={cn(
+                'shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all',
+                selectedBarberId === 'all'
+                  ? 'bg-gold/15 border-gold/40 text-gold shadow-[0_0_12px_rgba(201,168,76,0.12)]'
+                  : 'bg-sidebar border-border text-muted hover:text-primary hover:border-border2',
+              )}
+            >
+              <CalendarIcon size={12} />
+              Todos
+              <span className="text-[9px] font-mono opacity-60">({appointments.length})</span>
+            </button>
+            {barbers.map(b => {
+              const color = barberColor(b.id, barbers);
+              const count = appointments.filter(a => a.barber_id === b.id).length;
+              const active = selectedBarberId === b.id;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => setSelectedBarberId(b.id!)}
+                  className={cn(
+                    'shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all',
+                    active
+                      ? cn('border', color.border, color.bg, color.text, 'ring-1', color.ring)
+                      : 'bg-sidebar border-border text-muted hover:text-primary hover:border-border2',
+                  )}
+                >
+                  <span className={cn('w-2 h-2 rounded-full', color.dot)} />
+                  <span className="max-w-[120px] truncate normal-case tracking-normal">{b.name}</span>
+                  <span className="text-[9px] font-mono opacity-60">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </header>
 
-      {/* ── Main layout: calendar + right panel ── */}
-      <div className="flex gap-5">
+      {/* ── Main layout: calendar + right panel (stacks on < xl) ── */}
+      <div className="flex flex-col xl:flex-row gap-5">
 
         {/* ── LEFT: Calendar grid ── */}
         <div className="flex-1 min-w-0">
@@ -382,7 +475,7 @@ export default function CalendarPage() {
           {(view === 'day' || view === 'week') && (
             <div className="card overflow-hidden">
               {/* Day headers */}
-              <div className={cn('grid border-b border-border', view === 'week' ? 'grid-cols-8' : 'grid-cols-2')}>
+              <div className={cn('grid border-b border-border', view === 'week' ? 'grid-cols-8' : 'grid-cols-[56px_1fr]')}>
                 <div className="p-4 border-r border-border bg-sidebar/50" />
                 {(view === 'week' ? weekDays : [currentDate]).map(day => (
                   <button
@@ -402,7 +495,7 @@ export default function CalendarPage() {
                       {format(day, 'dd')}
                     </p>
                     {/* dot indicator for appointments */}
-                    {appointments.some(a => isSameDay(parseISO(a.starts_at), day)) && (
+                    {visibleAppointments.some(a => isSameDay(parseISO(a.starts_at), day)) && (
                       <div className="w-1.5 h-1.5 rounded-full bg-gold mx-auto mt-1 opacity-60" />
                     )}
                   </button>
@@ -410,7 +503,7 @@ export default function CalendarPage() {
               </div>
 
               {/* Time grid */}
-              <div className={cn('grid h-[600px] overflow-y-auto relative', view === 'week' ? 'grid-cols-8' : 'grid-cols-2')}>
+              <div className={cn('grid h-[520px] lg:h-[600px] overflow-y-auto relative', view === 'week' ? 'grid-cols-8' : 'grid-cols-[56px_1fr]')}>
                 {/* Hour labels */}
                 <div className="border-r border-border bg-sidebar/30">
                   {HOURS.map(hour => (
@@ -436,13 +529,14 @@ export default function CalendarPage() {
                     ))}
 
                     {/* Appointment chips */}
-                    {appointments
+                    {visibleAppointments
                       .filter(app => isSameDay(parseISO(app.starts_at), day))
                       .map(app => {
                         const start    = parseISO(app.starts_at);
                         const top      = (start.getHours() - 8) * 80 + (start.getMinutes() / 60) * 80;
                         const duration = (parseISO(app.ends_at).getTime() - start.getTime()) / 60000;
                         const height   = Math.max((duration / 60) * 80, 28);
+                        const color    = barberColor(app.barber_id, barbers);
 
                         return (
                           <motion.div
@@ -458,9 +552,19 @@ export default function CalendarPage() {
                               STATUS_CHIP[app.status] ?? STATUS_CHIP.scheduled,
                             )}
                           >
-                            <p className="text-[10px] font-bold leading-tight truncate">{app.clients?.name}</p>
+                            <div className="flex items-center gap-1">
+                              {app.barber_id && (
+                                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', color.dot)} />
+                              )}
+                              <p className="text-[10px] font-bold leading-tight truncate">{app.clients?.name}</p>
+                            </div>
                             <p className="text-[8px] opacity-70 uppercase tracking-tighter truncate">{app.services?.name}</p>
-                            <p className="text-[8px] opacity-50 font-mono">{format(start, 'HH:mm')}</p>
+                            <p className="text-[8px] opacity-50 font-mono flex items-center gap-1 justify-between">
+                              <span>{format(start, 'HH:mm')}</span>
+                              {app.barbers?.name && (
+                                <span className="truncate max-w-[60%]">{app.barbers.name}</span>
+                              )}
+                            </p>
                           </motion.div>
                         );
                       })}
@@ -489,7 +593,7 @@ export default function CalendarPage() {
                 return weeks.map((week, wi) => (
                   <div key={wi} className="grid grid-cols-7 border-b border-border last:border-b-0">
                     {week.map(day => {
-                      const dayApps = appointments.filter(a => isSameDay(parseISO(a.starts_at), day));
+                      const dayApps = visibleAppointments.filter(a => isSameDay(parseISO(a.starts_at), day));
                       const inMonth = day.getMonth() === currentDate.getMonth();
                       return (
                         <div
@@ -533,8 +637,8 @@ export default function CalendarPage() {
         {/* ══════════════════════════════════════════════
             RIGHT PANEL — Barbeiro (quick status actions)
         ══════════════════════════════════════════════ */}
-        <div className="shrink-0 w-72 xl:w-80">
-          <div className="bg-sidebar border border-border rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.4)] sticky top-8">
+        <div className="shrink-0 w-full xl:w-80">
+          <div className="bg-sidebar border border-border rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.4)] xl:sticky xl:top-8">
 
             {/* Panel header */}
             <div className="border-b border-border">
@@ -708,12 +812,12 @@ export default function CalendarPage() {
       ══════════════════════════════════════════════ */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.97 }}
-              className="bg-bg border border-border2 w-full max-w-md rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+              className="bg-bg border-t sm:border border-border2 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden max-h-[92vh] flex flex-col"
             >
               {/* Gold bar */}
               <div className="h-0.5 w-full bg-gradient-to-r from-gold/0 via-gold to-gold/0" />
@@ -737,7 +841,7 @@ export default function CalendarPage() {
               </div>
 
               {/* Modal form */}
-              <form onSubmit={handleSave} className="p-6 space-y-4">
+              <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-4 overflow-y-auto">
                 {formError && (
                   <div className="flex items-center gap-2 p-3.5 bg-red-950/60 border border-red-500/20 text-error text-xs font-bold rounded-xl">
                     <AlertCircle size={14} /> {formError}
@@ -775,6 +879,23 @@ export default function CalendarPage() {
                     ))}
                   </select>
                 </div>
+
+                {/* Barbeiro */}
+                {barbers.length > 0 && (
+                  <div className="space-y-1">
+                    <label className="label-xs"><User size={11} /> Barbeiro</label>
+                    <select
+                      value={appointmentBarberId}
+                      onChange={e => setAppointmentBarberId(e.target.value)}
+                      className="input-dark"
+                    >
+                      <option value="">Sem preferência</option>
+                      {barbers.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}{b.role ? ` — ${b.role}` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Data + Hora */}
                 <div className="grid grid-cols-2 gap-4">
@@ -899,6 +1020,15 @@ export default function CalendarPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Mobile FAB — Novo Agendamento */}
+      <button
+        onClick={() => openNewModal()}
+        aria-label="Novo agendamento"
+        className="lg:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-2xl bg-gradient-to-br from-gold to-gold-light text-sidebar shadow-[0_6px_24px_rgba(201,168,76,0.4)] flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus size={22} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }

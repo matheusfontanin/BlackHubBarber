@@ -110,11 +110,11 @@ export default function ServicesPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="p-6 lg:p-8">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <p className="text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Catálogo</p>
-          <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Serviços</h1>
+          <p className="text-[11px] sm:text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Catálogo</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Serviços</h1>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -130,7 +130,7 @@ export default function ServicesPage() {
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="btn-gold flex items-center gap-2 shrink-0"
+            className="btn-gold hidden md:flex items-center gap-2 shrink-0"
           >
             <Plus size={16} /> Novo Serviço
           </button>
@@ -150,29 +150,32 @@ export default function ServicesPage() {
           <p className="text-faint text-sm mt-1">Adicione seu primeiro serviço clicando em "Novo Serviço"</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {filteredServices.map((service, i) => (
             <motion.div
               key={service.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="card p-6 group hover:border-gold/20 hover:shadow-[0_4px_24px_rgba(201,168,76,0.08)] transition-all duration-300"
+              className="card p-5 sm:p-6 group hover:border-gold/20 hover:shadow-[0_4px_24px_rgba(201,168,76,0.08)] transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-gold/10 border border-gold/20 text-gold rounded-xl">
                   <Scissors size={22} />
                 </div>
-                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Always visible on touch, hover-fade on desktop */}
+                <div className="flex gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleOpenModal(service)}
-                    className="p-2 hover:bg-surface rounded-lg transition-colors text-muted hover:text-primary"
+                    aria-label="Editar serviço"
+                    className="p-2 bg-surface/60 md:bg-transparent border border-border md:border-transparent hover:bg-surface rounded-lg transition-colors text-muted hover:text-primary"
                   >
                     <Edit2 size={15} />
                   </button>
                   <button
                     onClick={() => service.id && handleDelete(service.id)}
-                    className="p-2 hover:bg-surface rounded-lg transition-colors text-muted hover:text-error"
+                    aria-label="Excluir serviço"
+                    className="p-2 bg-surface/60 md:bg-transparent border border-border md:border-transparent hover:bg-surface rounded-lg transition-colors text-muted hover:text-error"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -195,15 +198,24 @@ export default function ServicesPage() {
         </div>
       )}
 
+      {/* Mobile floating action button */}
+      <button
+        onClick={() => handleOpenModal()}
+        aria-label="Novo serviço"
+        className="md:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-2xl bg-gradient-to-br from-gold to-gold-light text-sidebar shadow-[0_6px_24px_rgba(201,168,76,0.4)] flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus size={22} strokeWidth={2.5} />
+      </button>
+
       {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.97 }}
-              className="bg-bg border border-border2 w-full max-w-md rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+              className="bg-bg border-t sm:border border-border2 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden max-h-[92vh] flex flex-col"
             >
               {/* Modal header */}
               <div className="h-0.5 w-full bg-gradient-to-r from-gold/0 via-gold to-gold/0" />
@@ -224,7 +236,7 @@ export default function ServicesPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-6 space-y-5">
+              <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-5 overflow-y-auto">
                 <div className="space-y-1">
                   <label className="label-xs">Nome do Serviço</label>
                   <input

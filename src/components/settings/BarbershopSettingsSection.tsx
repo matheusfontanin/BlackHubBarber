@@ -1,10 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, ImagePlus, Trash2, Scissors } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
-import { getTenantSettings, upsertTenantSettings, getTenantBasicData } from '@/services/settingsService';
+import {
+  getTenantSettings,
+  upsertTenantSettings,
+  getTenantBasicData,
+  getTenantLogo,
+  updateTenantLogo,
+} from '@/services/settingsService';
 import type { TenantSettings } from '@/types/settings';
 import { IMaskInput } from 'react-imask';
+
+const MAX_LOGO_BYTES = 500 * 1024; // 500KB hard cap on stored base64
+const MAX_LOGO_DIMENSION = 512;    // pixels (longest edge) before encoding
+
+/**
+ * Reads a file, rasterizes to a canvas with max dimension of 512px and
+ * returns a base64 data URL. SVGs are passed through unchanged.
+ */
+async function fileToCompressedDataUrl(file: File): Promise<string> {
+  if (file.type === 'image/svg+xml') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Falha ao ler SVG'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_LOGO_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas não suportado');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+
+  // PNG preserves transparency for logos
+  return canvas.toDataURL('image/png');
+}
 
 const INPUT_CLS = "w-full px-4 py-3 bg-bg border border-primary/8 rounded-xl outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all text-sm font-medium";
 const LABEL_CLS = "text-[10px] font-bold text-primary/40 uppercase tracking-wider block mb-2";
@@ -16,6 +55,10 @@ export default function BarbershopSettingsSection() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<Partial<TenantSettings>>({});
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -26,8 +69,11 @@ export default function BarbershopSettingsSection() {
     setLoading(true);
     try {
       // Tenta carregar settings complementares
-      const settings = await getTenantSettings(tenantId!);
-      
+      const [settings, tenantLogo] = await Promise.all([
+        getTenantSettings(tenantId!),
+        getTenantLogo(tenantId!),
+      ]);
+
       if (settings) {
         setForm(settings);
       } else {
@@ -46,10 +92,56 @@ export default function BarbershopSettingsSection() {
           });
         }
       }
+
+      setLogoUrl(tenantLogo);
     } catch (err) {
       console.error('Erro ao carregar dados da barbearia:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting same file
+    if (!file || !tenantId) return;
+    setLogoError(null);
+
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Envie um arquivo de imagem (PNG, JPG, SVG ou WEBP).');
+      return;
+    }
+
+    setLogoUploading(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      if (dataUrl.length > MAX_LOGO_BYTES * 1.37 /* base64 overhead */) {
+        setLogoError('Logo muito grande. Envie uma imagem menor (máx. ~500KB após compressão).');
+        return;
+      }
+      await updateTenantLogo(tenantId, dataUrl);
+      setLogoUrl(dataUrl);
+      window.dispatchEvent(new CustomEvent('tenant-logo-updated', { detail: dataUrl }));
+    } catch (err) {
+      console.error('Erro ao enviar logo:', err);
+      setLogoError('Não foi possível enviar o logo. Tente novamente.');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    if (!tenantId) return;
+    setLogoUploading(true);
+    try {
+      await updateTenantLogo(tenantId, null);
+      setLogoUrl(null);
+      window.dispatchEvent(new CustomEvent('tenant-logo-updated', { detail: null }));
+    } catch (err) {
+      console.error('Erro ao remover logo:', err);
+      setLogoError('Não foi possível remover o logo.');
+    } finally {
+      setLogoUploading(false);
     }
   };
 
@@ -80,6 +172,68 @@ export default function BarbershopSettingsSection() {
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
+      {/* Logo uploader */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-heading font-medium tracking-tight text-primary">
+            Logo da Barbearia
+          </h2>
+          <span className="text-[10px] font-bold text-faint uppercase tracking-wider hidden sm:inline">
+            Aparece no menu lateral
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Preview */}
+          <div className="w-20 h-20 rounded-2xl bg-surface border border-border2 flex items-center justify-center overflow-hidden shrink-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <Scissors size={26} className="text-gold/50" />
+            )}
+          </div>
+
+          {/* Controls */}
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={logoUploading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gold/25 text-gold text-xs font-bold uppercase tracking-wider hover:bg-gold/10 transition-all disabled:opacity-40"
+              >
+                {logoUploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                {logoUrl ? 'Trocar logo' : 'Enviar logo'}
+              </button>
+
+              {logoUrl && !logoUploading && (
+                <button
+                  type="button"
+                  onClick={handleLogoRemove}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border2 text-muted hover:text-error hover:border-red-500/30 text-xs font-bold uppercase tracking-wider transition-all"
+                >
+                  <Trash2 size={14} /> Remover
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-faint leading-relaxed">
+              PNG, JPG, SVG ou WEBP. O logo aparece no menu lateral. Ideal: quadrado, fundo transparente, até 500KB.
+            </p>
+            {logoError && (
+              <p className="text-[11px] text-error font-semibold">{logoError}</p>
+            )}
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={handleLogoSelect}
+          />
+        </div>
+      </section>
+
       <h2 className="text-lg font-heading font-medium tracking-tight text-primary border-b border-primary/[0.06] pb-4">
         Dados do Estabelecimento
       </h2>

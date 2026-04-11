@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
+  ClipboardList,
   Users,
   Scissors,
   DollarSign,
@@ -14,11 +15,31 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/hooks/useTenant';
+import { getTenantLogo } from '@/services/settingsService';
 
 export default function DashboardLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const { user, signOut, isDev } = useAuth();
+  const { tenantId } = useTenant();
   const navigate = useNavigate();
+
+  // Load tenant logo and keep it in sync with settings updates
+  useEffect(() => {
+    if (!tenantId) return;
+    let active = true;
+    getTenantLogo(tenantId).then(url => { if (active) setLogoUrl(url); }).catch(() => {});
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string | null>).detail;
+      setLogoUrl(detail ?? null);
+    };
+    window.addEventListener('tenant-logo-updated', handler);
+    return () => {
+      active = false;
+      window.removeEventListener('tenant-logo-updated', handler);
+    };
+  }, [tenantId]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -36,6 +57,7 @@ export default function DashboardLayout() {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Calendar, label: 'Agenda', path: '/calendar' },
+    { icon: ClipboardList, label: 'Atendim.', path: '/appointments' },
     { icon: Users, label: 'Clientes', path: '/customers' },
     { icon: Scissors, label: 'Serviços', path: '/services' },
     { icon: MessageSquare, label: 'Chat', path: '/chat' },
@@ -51,8 +73,12 @@ export default function DashboardLayout() {
       <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar px-4 flex items-center justify-between z-[60] border-b border-border">
         <div className="flex items-center gap-2.5">
           {/* Logo mark */}
-          <div className="w-7 h-7 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center">
-            <Scissors size={13} className="text-gold" />
+          <div className="w-8 h-8 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <Scissors size={14} className="text-gold" />
+            )}
           </div>
           <span className="font-heading font-bold text-base text-primary italic">BlackHub</span>
         </div>
@@ -82,8 +108,12 @@ export default function DashboardLayout() {
         {/* Logo */}
         <div className="hidden lg:flex h-[72px] items-center justify-center shrink-0 border-b border-border">
           <div className="flex flex-col items-center gap-1.5">
-            <div className="w-9 h-9 rounded-xl bg-gold/10 border border-gold/25 flex items-center justify-center shadow-[0_0_12px_rgba(201,168,76,0.15)]">
-              <Scissors size={16} className="text-gold" />
+            <div className="w-11 h-11 rounded-xl bg-gold/10 border border-gold/25 flex items-center justify-center overflow-hidden shadow-[0_0_12px_rgba(201,168,76,0.15)]">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <Scissors size={18} className="text-gold" />
+              )}
             </div>
             <span className="text-[9px] font-heading font-bold text-gold/70 uppercase tracking-[0.18em]">
               BlackHub

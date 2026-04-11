@@ -13,8 +13,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/contexts/AuthContext';
 import { statsService, type AIUsageStats } from '@/services/statsService';
+import { seedDevTestData, type SeedReport } from '@/services/devSeedService';
 
 const RECENT_APPOINTMENTS = [
   { id: 1, client: 'João Silva', service: 'Corte Degradê', time: '14:30', status: 'confirmed' as const, price: 'R$ 50', initials: 'JS' },
@@ -45,13 +48,38 @@ const TOP_BARBERS = [
 
 export default function DashboardPage() {
   const { tenantId } = useTenant();
+  const { isDev } = useAuth();
+  const navigate = useNavigate();
   const [aiStats, setAiStats] = useState<AIUsageStats | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedReport, setSeedReport] = useState<SeedReport | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   useEffect(() => {
     if (tenantId) {
       statsService.getAIUsageStats(tenantId).then(setAiStats);
     }
   }, [tenantId]);
+
+  const handleSeed = async () => {
+    if (!tenantId) return;
+    const ok = confirm(
+      'Carregar dados de teste?\n\nIsso vai inserir barbeiros, serviços, clientes, atendimentos e conversas de exemplo no tenant atual. Barbeiros, serviços e clientes só serão criados se ainda não existirem. Atendimentos e conversas são sempre adicionados.'
+    );
+    if (!ok) return;
+    setSeeding(true);
+    setSeedError(null);
+    setSeedReport(null);
+    try {
+      const report = await seedDevTestData(tenantId);
+      setSeedReport(report);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido ao carregar dados de teste.';
+      setSeedError(msg);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const stats = [
     {
@@ -99,17 +127,50 @@ export default function DashboardPage() {
   const dateStr = today.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 sm:mb-8">
         <div>
-          <p className="text-xs text-muted font-medium mb-1 capitalize tracking-wider uppercase">{dayName}, {dateStr}</p>
-          <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Visão Geral</h1>
+          <p className="text-[11px] sm:text-xs text-muted font-medium mb-1 capitalize tracking-wider uppercase">{dayName}, {dateStr}</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Visão Geral</h1>
         </div>
-        <button className="btn-gold flex items-center gap-2">
-          <Calendar size={16} /> Novo Agendamento
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {isDev && (
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-purple-500/30 bg-purple-950/40 text-purple-300 text-[11px] font-bold uppercase tracking-wider hover:bg-purple-950/60 hover:border-purple-400/50 transition-all disabled:opacity-50"
+              title="Carrega barbeiros, clientes, atendimentos e conversas de exemplo"
+            >
+              <Sparkles size={14} /> {seeding ? 'Carregando...' : 'Dados de teste'}
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/calendar?new=1')}
+            className="btn-gold flex items-center justify-center gap-2 w-full sm:w-auto"
+          >
+            <Calendar size={16} /> Novo Agendamento
+          </button>
+        </div>
       </header>
+
+      {/* Seed result banner */}
+      {seedReport && (
+        <div className="mb-5 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-200 text-xs font-mono">
+          <p className="font-bold mb-1 uppercase tracking-wider">Dados de teste carregados ✓</p>
+          <p>
+            {seedReport.barbers} barbeiros, {seedReport.services} serviços, {seedReport.clients} clientes,{' '}
+            {seedReport.appointments} atendimentos, {seedReport.conversations} conversas ({seedReport.messages} mensagens),{' '}
+            {seedReport.memories} memórias IA.
+          </p>
+        </div>
+      )}
+      {seedError && (
+        <div className="mb-5 p-4 rounded-xl border border-red-500/30 bg-red-950/40 text-red-300 text-xs font-mono">
+          <p className="font-bold mb-1 uppercase tracking-wider">Falha ao carregar dados de teste</p>
+          <p>{seedError}</p>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-8">

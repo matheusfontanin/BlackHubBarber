@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import OnboardingPage from '@/pages/onboarding/OnboardingPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import CalendarPage from '@/pages/calendar/CalendarPage';
+import AppointmentsPage from '@/pages/appointments/AppointmentsPage';
 import ServicesPage from '@/pages/services/ServicesPage';
 import CustomersPage from '@/pages/customers/CustomersPage';
 import SettingsPage from '@/pages/settings/SettingsPage';
@@ -68,6 +69,7 @@ export default function App() {
           <Route element={<TenantRoute><DashboardLayout /></TenantRoute>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/appointments" element={<AppointmentsPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/settings" element={<SettingsPage />} />

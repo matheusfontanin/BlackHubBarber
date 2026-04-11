@@ -131,10 +131,32 @@ export async function getIntegrationsOverview(tenantId: string): Promise<Integra
 export async function getTenantBasicData(tenantId: string) {
   const { data, error } = await supabase
     .from('tenants')
-    .select('name, owner_name, phone, email, address, city, state, instagram_handle, opening_hours')
+    .select('name, owner_name, phone, email, address, city, state, instagram_handle, opening_hours, logo_url')
     .eq('id', tenantId)
     .single();
 
   if (error) throw error;
   return data;
+}
+
+// ─── Tenant Logo (brand image shown in sidebar) ──────────────
+
+export async function getTenantLogo(tenantId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('tenants')
+    .select('logo_url')
+    .eq('id', tenantId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.logo_url ?? null;
+}
+
+export async function updateTenantLogo(tenantId: string, logoUrl: string | null): Promise<void> {
+  const { error } = await supabase
+    .from('tenants')
+    .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+    .eq('id', tenantId);
+
+  if (error) throw error;
 }

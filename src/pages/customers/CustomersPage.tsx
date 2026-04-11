@@ -103,11 +103,11 @@ export default function CustomersPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="p-6 lg:p-8">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <p className="text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Gestão</p>
-          <h1 className="text-3xl font-heading font-bold text-primary italic heading-underline">Clientes</h1>
+          <p className="text-[11px] sm:text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Gestão</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Clientes</h1>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -121,9 +121,10 @@ export default function CustomersPage() {
               className="input-dark pl-10"
             />
           </div>
+          {/* Desktop: inline button; Mobile: floating FAB (see below) */}
           <button
             onClick={() => handleOpenModal()}
-            className="btn-gold flex items-center gap-2 shrink-0"
+            className="btn-gold hidden md:flex items-center gap-2 shrink-0"
           >
             <Plus size={16} /> Novo Cliente
           </button>
@@ -134,17 +135,64 @@ export default function CustomersPage() {
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin text-gold" size={36} />
         </div>
+      ) : filteredCustomers.length === 0 ? (
+        <div className="card flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mb-4">
+            <Users size={28} className="text-gold/60" />
+          </div>
+          <p className="text-muted font-medium">Nenhum cliente encontrado</p>
+          <p className="text-faint text-sm mt-1">Adicione seu primeiro cliente para começar</p>
+        </div>
       ) : (
-        <div className="card overflow-hidden">
-          {filteredCustomers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mb-4">
-                <Users size={28} className="text-gold/60" />
+        <>
+          {/* ── Mobile: card list ── */}
+          <div className="md:hidden grid grid-cols-1 gap-3">
+            {filteredCustomers.map((customer) => (
+              <div
+                key={customer.id}
+                className="card p-4 flex items-start gap-3"
+              >
+                <div className="w-11 h-11 rounded-xl bg-gold/10 border border-gold/20 text-gold flex items-center justify-center font-bold text-base shrink-0">
+                  {customer.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-primary truncate">{customer.name}</p>
+                  <div className="mt-1 space-y-0.5">
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-muted">
+                      <Phone size={10} className="text-faint shrink-0" /> <span className="truncate">{customer.phone}</span>
+                    </div>
+                    {customer.email && (
+                      <div className="flex items-center gap-2 text-[11px] font-mono text-faint">
+                        <Mail size={10} className="text-faint shrink-0" /> <span className="truncate">{customer.email}</span>
+                      </div>
+                    )}
+                  </div>
+                  {customer.notes && (
+                    <p className="mt-2 text-[11px] text-muted line-clamp-2">{customer.notes}</p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button
+                    onClick={() => handleOpenModal(customer)}
+                    aria-label="Editar cliente"
+                    className="p-2 bg-surface/60 border border-border rounded-lg text-muted active:text-primary"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => customer.id && handleDelete(customer.id)}
+                    aria-label="Excluir cliente"
+                    className="p-2 bg-surface/60 border border-border rounded-lg text-muted active:text-error"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
-              <p className="text-muted font-medium">Nenhum cliente encontrado</p>
-              <p className="text-faint text-sm mt-1">Adicione seu primeiro cliente para começar</p>
-            </div>
-          ) : (
+            ))}
+          </div>
+
+          {/* ── Desktop: table ── */}
+          <div className="hidden md:block card overflow-hidden">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-border">
@@ -200,19 +248,28 @@ export default function CustomersPage() {
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        </>
       )}
+
+      {/* Mobile floating action button */}
+      <button
+        onClick={() => handleOpenModal()}
+        aria-label="Novo cliente"
+        className="md:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-2xl bg-gradient-to-br from-gold to-gold-light text-sidebar shadow-[0_6px_24px_rgba(201,168,76,0.4)] flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus size={22} strokeWidth={2.5} />
+      </button>
 
       {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.97 }}
-              className="bg-bg border border-border2 w-full max-w-md rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+              className="bg-bg border-t sm:border border-border2 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden max-h-[92vh] flex flex-col"
             >
               <div className="h-0.5 w-full bg-gradient-to-r from-gold/0 via-gold to-gold/0" />
               <div className="bg-sidebar border-b border-border px-6 py-5 flex justify-between items-center">
@@ -229,7 +286,7 @@ export default function CustomersPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-6 space-y-5">
+              <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-5 overflow-y-auto">
                 <div className="space-y-1">
                   <label className="label-xs">Nome Completo</label>
                   <input

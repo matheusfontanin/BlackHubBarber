@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, MessageSquare, Send, Phone, Mail, AtSign,
   Loader2, X, Bot, User, Crown, Scissors, Clock,
-  Hash, Star, AlertTriangle, ChevronRight, Brain,
+  Hash, Star, AlertTriangle, ChevronRight, ChevronLeft, Brain,
   Tag, Eye, Filter, Wifi, WifiOff,
 } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday, isSameDay } from 'date-fns';
@@ -67,6 +67,8 @@ export default function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [showProfile, setShowProfile] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
+  // Mobile navigation: list → thread → profile (as overlay)
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -206,6 +208,178 @@ export default function ChatPage() {
 
   if (tenantLoading) return null;
 
+  /* ── Profile body (shared between desktop inline panel and mobile overlay) ── */
+  const profileBody = client && (
+    <>
+      {/* Profile header */}
+      <div className="px-5 py-6 border-b border-border text-center">
+        <div className="w-16 h-16 rounded-2xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-2xl font-bold text-blue-400 mx-auto mb-3">
+          {client.name?.charAt(0).toUpperCase()}
+        </div>
+        <h3 className="text-base font-heading font-bold text-primary italic">{client.name}</h3>
+        <div className="flex justify-center gap-3 mt-2">
+          {client.phone && (
+            <span className="flex items-center gap-1 text-[10px] text-muted font-mono">
+              <Phone size={10} className="text-faint" /> {client.phone}
+            </span>
+          )}
+        </div>
+        <div className="flex justify-center gap-2 mt-2">
+          {client.email && (
+            <span className="flex items-center gap-1 text-[10px] text-faint font-mono">
+              <Mail size={9} /> {client.email}
+            </span>
+          )}
+          {client.instagram_handle && (
+            <span className="flex items-center gap-1 text-[10px] text-faint font-mono">
+              <AtSign size={9} /> @{client.instagram_handle}
+            </span>
+          )}
+        </div>
+
+        {client.tags && client.tags.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+            {client.tags.map(tag => (
+              <span key={tag} className="text-[9px] font-bold bg-gold/10 border border-gold/20 text-gold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="px-5 py-4 border-b border-border">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-3 flex items-center gap-1.5">
+          <Star size={10} /> Resumo
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-surface rounded-xl p-2.5 text-center">
+            <p className="text-base font-mono font-bold text-primary">{client.total_visits ?? 0}</p>
+            <p className="text-[8px] text-faint uppercase tracking-wider font-bold">Visitas</p>
+          </div>
+          <div className="bg-surface rounded-xl p-2.5 text-center">
+            <p className="text-base font-mono font-bold text-gold">
+              R$ {Number(client.total_spent ?? 0).toFixed(0)}
+            </p>
+            <p className="text-[8px] text-faint uppercase tracking-wider font-bold">Gasto</p>
+          </div>
+          <div className="bg-surface rounded-xl p-2.5 text-center">
+            <p className="text-base font-mono font-bold text-emerald-400">{client.loyalty_points ?? 0}</p>
+            <p className="text-[8px] text-faint uppercase tracking-wider font-bold">Pontos</p>
+          </div>
+        </div>
+        {client.last_visit_at && (
+          <p className="text-[10px] text-faint mt-2 flex items-center gap-1">
+            <Clock size={9} /> Última visita: {format(parseISO(client.last_visit_at), "d 'de' MMM", { locale: ptBR })}
+          </p>
+        )}
+      </div>
+
+      {/* Preferences */}
+      {prefs && Object.keys(prefs).length > 0 && (
+        <div className="px-5 py-4 border-b border-border">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-3 flex items-center gap-1.5">
+            <Scissors size={10} /> Preferências
+          </p>
+          <div className="space-y-2">
+            {prefs.corte_preferido && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-gold">💇</span>
+                <div>
+                  <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Corte</p>
+                  <p className="text-xs text-primary">{prefs.corte_preferido}</p>
+                </div>
+              </div>
+            )}
+            {prefs.barba && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-gold">🧔</span>
+                <div>
+                  <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Barba</p>
+                  <p className="text-xs text-primary">{prefs.barba}</p>
+                </div>
+              </div>
+            )}
+            {prefs.barbeiro_favorito && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-gold">⭐</span>
+                <div>
+                  <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Barbeiro Favorito</p>
+                  <p className="text-xs text-primary">{prefs.barbeiro_favorito}</p>
+                </div>
+              </div>
+            )}
+            {prefs.alergias && prefs.alergias.length > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-orange-400">⚠️</span>
+                <div>
+                  <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Alergias</p>
+                  <p className="text-xs text-orange-300">{prefs.alergias.join(', ')}</p>
+                </div>
+              </div>
+            )}
+            {prefs.produtos && prefs.produtos.length > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-gold">🧴</span>
+                <div>
+                  <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Produtos</p>
+                  <p className="text-xs text-primary">{prefs.produtos.join(', ')}</p>
+                </div>
+              </div>
+            )}
+            {prefs.observacoes && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-gold">📝</span>
+                <div>
+                  <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Observações</p>
+                  <p className="text-xs text-muted">{prefs.observacoes}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Memories */}
+      {memories.length > 0 && (
+        <div className="px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-3 flex items-center gap-1.5">
+            <Brain size={10} /> Memórias da IA
+          </p>
+          <div className="space-y-2">
+            {memories.slice(0, 8).map(mem => {
+              const typeConfig: Record<string, { icon: string; color: string }> = {
+                preference: { icon: '✂️', color: 'border-gold/20 bg-gold/5' },
+                behavior:   { icon: '📊', color: 'border-blue-500/20 bg-blue-950/30' },
+                note:       { icon: '📝', color: 'border-border bg-surface' },
+                summary:    { icon: '📋', color: 'border-emerald-500/20 bg-emerald-950/30' },
+              };
+              const cfg = typeConfig[mem.memory_type] ?? typeConfig.note;
+
+              return (
+                <div
+                  key={mem.id}
+                  className={cn('rounded-lg border px-3 py-2', cfg.color)}
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] mt-0.5">{cfg.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] text-primary leading-snug">{mem.content}</p>
+                      <p className="text-[8px] text-faint font-mono mt-1">
+                        {format(parseISO(mem.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   /* ═══════════════════════════════════════════════════════
      RENDER
   ═══════════════════════════════════════════════════════ */
@@ -214,8 +388,12 @@ export default function ChatPage() {
 
       {/* ════════════════════════════════════════════════
           COLUMN 1 — Conversations List
+          Mobile: hidden when a conversation is selected
       ════════════════════════════════════════════════ */}
-      <div className="w-[340px] shrink-0 bg-sidebar border-r border-border flex flex-col">
+      <div className={cn(
+        "w-full lg:w-[340px] lg:shrink-0 bg-sidebar lg:border-r border-border flex flex-col",
+        selectedConv && "hidden lg:flex",
+      )}>
         {/* Header */}
         <div className="px-5 pt-6 pb-4 border-b border-border space-y-4">
           <div className="flex items-center justify-between">
@@ -365,10 +543,14 @@ export default function ChatPage() {
 
       {/* ════════════════════════════════════════════════
           COLUMN 2 — Messages Thread
+          Mobile: shown only when conversation selected
       ════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col bg-appbg min-w-0">
+      <div className={cn(
+        "flex-1 flex-col bg-appbg min-w-0",
+        selectedConv ? "flex" : "hidden lg:flex",
+      )}>
         {!selectedConv ? (
-          /* Empty state */
+          /* Empty state (desktop only) */
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
             <div className="w-20 h-20 rounded-2xl bg-gold/5 border border-gold/15 flex items-center justify-center mb-6">
               <MessageSquare size={36} className="text-gold/30" />
@@ -381,29 +563,46 @@ export default function ChatPage() {
         ) : (
           <>
             {/* Chat header */}
-            <div className="bg-sidebar border-b border-border px-6 py-3.5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400">
+            <div className="bg-sidebar border-b border-border px-4 lg:px-6 py-3.5 flex items-center justify-between shrink-0 gap-3">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* Mobile back button */}
+                <button
+                  onClick={() => setSelectedConv(null)}
+                  aria-label="Voltar"
+                  className="lg:hidden p-2 -ml-2 rounded-lg text-muted hover:text-primary"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="w-9 h-9 rounded-xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400 shrink-0">
                   {client?.name?.charAt(0).toUpperCase() ?? '?'}
                 </div>
-                <div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm font-semibold text-primary truncate">{client?.name}</p>
+                    <span className="text-[10px] shrink-0">{CHANNEL_ICON[selectedConv.channel].icon}</span>
+                  </div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-primary">{client?.name}</p>
-                    <span className="text-[10px]">{CHANNEL_ICON[selectedConv.channel].icon}</span>
                     <span className={cn(
                       'text-[9px] font-bold uppercase tracking-wider',
                       STATUS_CONFIG[selectedConv.status].color,
                     )}>
                       {STATUS_CONFIG[selectedConv.status].label}
                     </span>
+                    <p className="text-[10px] text-faint font-mono truncate">{client?.phone}</p>
                   </div>
-                  <p className="text-[10px] text-faint font-mono">{client?.phone}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => setShowProfile(p => !p)}
+                  onClick={() => {
+                    // Desktop: toggle inline panel; Mobile: open overlay
+                    if (window.matchMedia('(max-width: 1023px)').matches) {
+                      setMobileProfileOpen(true);
+                    } else {
+                      setShowProfile(p => !p);
+                    }
+                  }}
                   title="Perfil do cliente"
                   className={cn(
                     'p-2 rounded-lg transition-all',
@@ -418,7 +617,7 @@ export default function ChatPage() {
             </div>
 
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
               {loadingMsgs ? (
                 <div className="flex justify-center py-16">
                   <Loader2 className="animate-spin text-gold" size={24} />
@@ -503,7 +702,7 @@ export default function ChatPage() {
             </div>
 
             {/* Message input */}
-            <div className="border-t border-border bg-sidebar px-6 py-4">
+            <div className="border-t border-border bg-sidebar px-4 lg:px-6 py-4">
               <div className="flex items-end gap-3">
                 <textarea
                   ref={inputRef}
@@ -542,7 +741,7 @@ export default function ChatPage() {
       </div>
 
       {/* ════════════════════════════════════════════════
-          COLUMN 3 — Client Profile Panel
+          COLUMN 3 — Client Profile Panel (desktop inline)
       ════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showProfile && selectedConv && client && (
@@ -551,178 +750,48 @@ export default function ChatPage() {
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="shrink-0 bg-sidebar border-l border-border overflow-hidden"
+            className="hidden lg:block shrink-0 bg-sidebar border-l border-border overflow-hidden"
           >
             <div className="w-[320px] h-full overflow-y-auto">
-              {/* Profile header */}
-              <div className="px-5 py-6 border-b border-border text-center">
-                <div className="w-16 h-16 rounded-2xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-2xl font-bold text-blue-400 mx-auto mb-3">
-                  {client.name?.charAt(0).toUpperCase()}
-                </div>
-                <h3 className="text-base font-heading font-bold text-primary italic">{client.name}</h3>
-                <div className="flex justify-center gap-3 mt-2">
-                  {client.phone && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted font-mono">
-                      <Phone size={10} className="text-faint" /> {client.phone}
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-center gap-2 mt-2">
-                  {client.email && (
-                    <span className="flex items-center gap-1 text-[10px] text-faint font-mono">
-                      <Mail size={9} /> {client.email}
-                    </span>
-                  )}
-                  {client.instagram_handle && (
-                    <span className="flex items-center gap-1 text-[10px] text-faint font-mono">
-                      <AtSign size={9} /> @{client.instagram_handle}
-                    </span>
-                  )}
-                </div>
-
-                {/* Tags */}
-                {client.tags && client.tags.length > 0 && (
-                  <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-                    {client.tags.map(tag => (
-                      <span key={tag} className="text-[9px] font-bold bg-gold/10 border border-gold/20 text-gold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Stats */}
-              <div className="px-5 py-4 border-b border-border">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-3 flex items-center gap-1.5">
-                  <Star size={10} /> Resumo
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-surface rounded-xl p-2.5 text-center">
-                    <p className="text-base font-mono font-bold text-primary">{client.total_visits ?? 0}</p>
-                    <p className="text-[8px] text-faint uppercase tracking-wider font-bold">Visitas</p>
-                  </div>
-                  <div className="bg-surface rounded-xl p-2.5 text-center">
-                    <p className="text-base font-mono font-bold text-gold">
-                      R$ {Number(client.total_spent ?? 0).toFixed(0)}
-                    </p>
-                    <p className="text-[8px] text-faint uppercase tracking-wider font-bold">Gasto</p>
-                  </div>
-                  <div className="bg-surface rounded-xl p-2.5 text-center">
-                    <p className="text-base font-mono font-bold text-emerald-400">{client.loyalty_points ?? 0}</p>
-                    <p className="text-[8px] text-faint uppercase tracking-wider font-bold">Pontos</p>
-                  </div>
-                </div>
-                {client.last_visit_at && (
-                  <p className="text-[10px] text-faint mt-2 flex items-center gap-1">
-                    <Clock size={9} /> Última visita: {format(parseISO(client.last_visit_at), "d 'de' MMM", { locale: ptBR })}
-                  </p>
-                )}
-              </div>
-
-              {/* Preferences */}
-              {prefs && Object.keys(prefs).length > 0 && (
-                <div className="px-5 py-4 border-b border-border">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-3 flex items-center gap-1.5">
-                    <Scissors size={10} /> Preferências
-                  </p>
-                  <div className="space-y-2">
-                    {prefs.corte_preferido && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-gold">💇</span>
-                        <div>
-                          <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Corte</p>
-                          <p className="text-xs text-primary">{prefs.corte_preferido}</p>
-                        </div>
-                      </div>
-                    )}
-                    {prefs.barba && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-gold">🧔</span>
-                        <div>
-                          <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Barba</p>
-                          <p className="text-xs text-primary">{prefs.barba}</p>
-                        </div>
-                      </div>
-                    )}
-                    {prefs.barbeiro_favorito && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-gold">⭐</span>
-                        <div>
-                          <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Barbeiro Favorito</p>
-                          <p className="text-xs text-primary">{prefs.barbeiro_favorito}</p>
-                        </div>
-                      </div>
-                    )}
-                    {prefs.alergias && prefs.alergias.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-orange-400">⚠️</span>
-                        <div>
-                          <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Alergias</p>
-                          <p className="text-xs text-orange-300">{prefs.alergias.join(', ')}</p>
-                        </div>
-                      </div>
-                    )}
-                    {prefs.produtos && prefs.produtos.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-gold">🧴</span>
-                        <div>
-                          <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Produtos</p>
-                          <p className="text-xs text-primary">{prefs.produtos.join(', ')}</p>
-                        </div>
-                      </div>
-                    )}
-                    {prefs.observacoes && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-gold">📝</span>
-                        <div>
-                          <p className="text-[9px] text-faint uppercase tracking-wider font-bold">Observações</p>
-                          <p className="text-xs text-muted">{prefs.observacoes}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* AI Memories */}
-              {memories.length > 0 && (
-                <div className="px-5 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-3 flex items-center gap-1.5">
-                    <Brain size={10} /> Memórias da IA
-                  </p>
-                  <div className="space-y-2">
-                    {memories.slice(0, 8).map(mem => {
-                      const typeConfig: Record<string, { icon: string; color: string }> = {
-                        preference: { icon: '✂️', color: 'border-gold/20 bg-gold/5' },
-                        behavior:   { icon: '📊', color: 'border-blue-500/20 bg-blue-950/30' },
-                        note:       { icon: '📝', color: 'border-border bg-surface' },
-                        summary:    { icon: '📋', color: 'border-emerald-500/20 bg-emerald-950/30' },
-                      };
-                      const cfg = typeConfig[mem.memory_type] ?? typeConfig.note;
-
-                      return (
-                        <div
-                          key={mem.id}
-                          className={cn('rounded-lg border px-3 py-2', cfg.color)}
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className="text-[10px] mt-0.5">{cfg.icon}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[11px] text-primary leading-snug">{mem.content}</p>
-                              <p className="text-[8px] text-faint font-mono mt-1">
-                                {format(parseISO(mem.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {profileBody}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ════════════════════════════════════════════════
+          Mobile Profile Overlay
+      ════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {mobileProfileOpen && selectedConv && client && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileProfileOpen(false)}
+              className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
+            />
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'tween', duration: 0.25 }}
+              className="lg:hidden fixed inset-y-0 right-0 w-[88%] max-w-sm bg-sidebar border-l border-border z-[95] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-sidebar sticky top-0 z-10">
+                <span className="text-xs font-bold uppercase tracking-wider text-gold">Perfil do Cliente</span>
+                <button
+                  onClick={() => setMobileProfileOpen(false)}
+                  aria-label="Fechar"
+                  className="p-1.5 rounded-lg text-muted hover:text-primary"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              {profileBody}
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
     </div>
