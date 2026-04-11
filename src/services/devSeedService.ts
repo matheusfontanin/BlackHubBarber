@@ -84,13 +84,30 @@ type BarberRow = { id: string; name: string };
 type ServiceRow = { id: string; name: string; price: number; duration_minutes: number };
 type ClientRow = { id: string; name: string; phone: string };
 
-/** Upsert barbers by (tenant_id, name). Returns the resulting list. */
+/** Recognize Postgres errors we can safely skip (missing table / RLS block). */
+function isSoftError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const code = (err as { code?: string }).code;
+  // 42P01 = undefined_table, 42501 = insufficient_privilege (RLS)
+  return code === '42P01' || code === '42501';
+}
+
+/**
+ * Upsert barbers by (tenant_id, name). Returns the resulting list.
+ * If the `barbers` table doesn't exist or RLS blocks access, returns [].
+ */
 async function ensureBarbers(tenantId: string): Promise<BarberRow[]> {
   const { data: existing, error: readErr } = await supabase
     .from('barbers')
     .select('id, name')
     .eq('tenant_id', tenantId);
-  if (readErr) throw readErr;
+  if (readErr) {
+    if (isSoftError(readErr)) {
+      console.warn('[seed] barbers table unavailable, skipping:', readErr);
+      return [];
+    }
+    throw readErr;
+  }
   const byName = new Map<string, BarberRow>((existing ?? []).map(b => [b.name, b]));
   const missing = BARBER_SEED.filter(b => !byName.has(b.name));
   if (missing.length > 0) {
@@ -98,7 +115,13 @@ async function ensureBarbers(tenantId: string): Promise<BarberRow[]> {
       .from('barbers')
       .insert(missing.map(b => ({ ...b, tenant_id: tenantId })))
       .select('id, name');
-    if (error) throw error;
+    if (error) {
+      if (isSoftError(error)) {
+        console.warn('[seed] could not insert barbers, skipping:', error);
+        return Array.from(byName.values());
+      }
+      throw error;
+    }
     for (const row of inserted ?? []) byName.set(row.name, row);
   }
   return BARBER_SEED.map(b => byName.get(b.name)!).filter(Boolean);
@@ -172,7 +195,7 @@ async function seedAppointments(
   services: ServiceRow[],
   clients: ClientRow[],
 ): Promise<number> {
-  if (barbers.length === 0 || services.length === 0 || clients.length === 0) return 0;
+  if (services.length === 0 || clients.length === 0) return 0;
 
   const today = new Date();
   // Tuples: [daysOffset, hour, minute, clientIdx, serviceIdx, barberIdx, status]
@@ -214,17 +237,20 @@ async function seedAppointments(
     const start = at(baseDay, h, m);
     const svc = services[si % services.length];
     const end = addMinutes(start, svc.duration_minutes);
-    return {
+    const row: Record<string, unknown> = {
       tenant_id: tenantId,
       client_id: clients[ci % clients.length].id,
       service_id: svc.id,
-      barber_id: barbers[bi % barbers.length].id,
       starts_at: start.toISOString(),
       ends_at: end.toISOString(),
       status,
       price: svc.price,
-      source: 'manual' as const,
+      source: 'manual',
     };
+    if (barbers.length > 0) {
+      row.barber_id = barbers[bi % barbers.length].id;
+    }
+    return row;
   });
 
   const { error, count } = await supabase
@@ -370,11 +396,31 @@ async function seedMemories(
   if (rows.length === 0) return 0;
   const { error } = await supabase.from('customer_memories').insert(rows);
   if (error) {
-    // Table may not exist in all environments — log but don't fail the whole seed
-    console.warn('Could not seed customer_memories:', error.message);
+    // Table may not exist / RLS may block — log but don't fail the whole seed
+    console.warn('[seed] could not seed customer_memories:', error);
     return 0;
   }
   return rows.length;
+}
+
+/** Tag an unknown thrown value with a step label so the UI can surface where it broke. */
+function tagError(step: string, err: unknown): Error {
+  // Supabase errors are plain objects: { message, details, hint, code }
+  if (err instanceof Error) {
+    const e = new Error(`[${step}] ${err.message}`);
+    (e as Error & { cause?: unknown }).cause = err;
+    return e;
+  }
+  if (err && typeof err === 'object') {
+    const pgErr = err as { message?: string; details?: string; hint?: string; code?: string };
+    const parts = [pgErr.message, pgErr.details, pgErr.hint, pgErr.code ? `(${pgErr.code})` : null]
+      .filter(Boolean)
+      .join(' — ');
+    const e = new Error(`[${step}] ${parts || JSON.stringify(err)}`);
+    (e as Error & { cause?: unknown }).cause = err;
+    return e;
+  }
+  return new Error(`[${step}] ${String(err)}`);
 }
 
 /**
@@ -385,13 +431,29 @@ async function seedMemories(
 export async function seedDevTestData(tenantId: string): Promise<SeedReport> {
   if (!tenantId) throw new Error('seedDevTestData: tenantId required');
 
-  const barbers  = await ensureBarbers(tenantId);
-  const services = await ensureServices(tenantId);
-  const clients  = await ensureClients(tenantId);
+  let barbers: BarberRow[] = [];
+  let services: ServiceRow[] = [];
+  let clients: ClientRow[] = [];
+  let appointments = 0;
+  let conversations = 0;
+  let messages = 0;
+  let memories = 0;
 
-  const appointments = await seedAppointments(tenantId, barbers, services, clients);
-  const { conversations, messages } = await seedConversations(tenantId, clients);
-  const memories = await seedMemories(tenantId, clients);
+  try { barbers  = await ensureBarbers(tenantId);  } catch (e) { throw tagError('ensureBarbers', e); }
+  try { services = await ensureServices(tenantId); } catch (e) { throw tagError('ensureServices', e); }
+  try { clients  = await ensureClients(tenantId);  } catch (e) { throw tagError('ensureClients', e); }
+
+  try {
+    appointments = await seedAppointments(tenantId, barbers, services, clients);
+  } catch (e) { throw tagError('seedAppointments', e); }
+
+  try {
+    const res = await seedConversations(tenantId, clients);
+    conversations = res.conversations;
+    messages = res.messages;
+  } catch (e) { throw tagError('seedConversations', e); }
+
+  try { memories = await seedMemories(tenantId, clients); } catch (e) { throw tagError('seedMemories', e); }
 
   return {
     barbers: barbers.length,

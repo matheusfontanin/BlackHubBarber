@@ -74,7 +74,17 @@ export default function DashboardPage() {
       const report = await seedDevTestData(tenantId);
       setSeedReport(report);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido ao carregar dados de teste.';
+      console.error('[seedDevTestData] failed:', err);
+      // Supabase errors are plain objects with message/code/details/hint
+      let msg = 'Erro desconhecido.';
+      if (err instanceof Error) {
+        msg = err.message;
+      } else if (err && typeof err === 'object') {
+        const e = err as { message?: string; details?: string; hint?: string; code?: string };
+        msg = [e.message, e.details, e.hint, e.code ? `(${e.code})` : null]
+          .filter(Boolean)
+          .join(' — ') || JSON.stringify(err);
+      }
       setSeedError(msg);
     } finally {
       setSeeding(false);
