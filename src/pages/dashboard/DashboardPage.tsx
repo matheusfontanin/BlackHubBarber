@@ -166,13 +166,21 @@ export default function DashboardPage() {
 
       {/* Seed result banner */}
       {seedReport && (
-        <div className="mb-5 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-200 text-xs font-mono">
-          <p className="font-bold mb-1 uppercase tracking-wider">Dados de teste carregados ✓</p>
+        <div className="mb-5 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-200 text-xs font-mono space-y-2">
+          <p className="font-bold uppercase tracking-wider">Dados de teste carregados ✓</p>
           <p>
             {seedReport.barbers} barbeiros, {seedReport.services} serviços, {seedReport.clients} clientes,{' '}
             {seedReport.appointments} atendimentos, {seedReport.conversations} conversas ({seedReport.messages} mensagens),{' '}
             {seedReport.memories} memórias IA.
           </p>
+          {seedReport.warnings.length > 0 && (
+            <div className="pt-2 border-t border-emerald-500/20 text-orange-300">
+              <p className="font-bold uppercase tracking-wider mb-1">⚠ Avisos</p>
+              {seedReport.warnings.map((w, i) => (
+                <p key={i} className="text-[11px]">• {w}</p>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {seedError && (

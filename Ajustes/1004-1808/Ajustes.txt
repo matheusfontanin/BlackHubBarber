@@ -1,0 +1,12 @@
+## Alterações gerais
+
+- Corrija o botão de novo agendamento no dashboard. 
+- Nas configurações, quero fazer o upload do logo da barbearia (aparecerá no menu lateral)
+
+## Alterações Mobile
+
+- Analise todo o sistema e otimize para mobile.
+- O calendário no mobile não ficou bom (refaça a visualização)
+- Refaça o CRUD dos clientes e serviços para eu conseguir executar no mobile. 
+- Corrija a visualização do chat no mobile
+- Não gostei do menu deslizante no mobile na aba de configurações

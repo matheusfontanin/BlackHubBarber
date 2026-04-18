@@ -25,6 +25,8 @@ export interface SeedReport {
   conversations: number;
   messages:      number;
   memories:      number;
+  /** Populated with warnings when some tables were skipped (RLS / missing). */
+  warnings:      string[];
 }
 
 const BARBER_SEED = [
@@ -316,7 +318,7 @@ const CONVERSATION_SEED: ConvSpec[] = [
 async function seedConversations(
   tenantId: string,
   clients: ClientRow[],
-): Promise<{ conversations: number; messages: number }> {
+): Promise<{ conversations: number; messages: number; skipped?: boolean }> {
   if (clients.length === 0) return { conversations: 0, messages: 0 };
   const now = new Date();
 
@@ -342,7 +344,13 @@ async function seedConversations(
       })
       .select('id')
       .single();
-    if (convErr) throw convErr;
+    if (convErr) {
+      if (isSoftError(convErr)) {
+        console.warn('[seed] conversations blocked by RLS or missing table, skipping chat seed:', convErr);
+        return { conversations: convCount, messages: msgCount, skipped: true };
+      }
+      throw convErr;
+    }
     convCount++;
 
     const msgRows = spec.messages.map(m => ({
@@ -355,7 +363,13 @@ async function seedConversations(
       metadata: {},
     }));
     const { error: msgErr } = await supabase.from('messages').insert(msgRows);
-    if (msgErr) throw msgErr;
+    if (msgErr) {
+      if (isSoftError(msgErr)) {
+        console.warn('[seed] messages blocked by RLS, skipping remaining chat seed:', msgErr);
+        return { conversations: convCount, messages: msgCount, skipped: true };
+      }
+      throw msgErr;
+    }
     msgCount += msgRows.length;
   }
 
@@ -438,8 +452,11 @@ export async function seedDevTestData(tenantId: string): Promise<SeedReport> {
   let conversations = 0;
   let messages = 0;
   let memories = 0;
+  const warnings: string[] = [];
 
   try { barbers  = await ensureBarbers(tenantId);  } catch (e) { throw tagError('ensureBarbers', e); }
+  if (barbers.length === 0) warnings.push('Tabela "barbers" indisponível (RLS/não existe). Atendimentos foram criados sem barbeiro.');
+
   try { services = await ensureServices(tenantId); } catch (e) { throw tagError('ensureServices', e); }
   try { clients  = await ensureClients(tenantId);  } catch (e) { throw tagError('ensureClients', e); }
 
@@ -451,9 +468,16 @@ export async function seedDevTestData(tenantId: string): Promise<SeedReport> {
     const res = await seedConversations(tenantId, clients);
     conversations = res.conversations;
     messages = res.messages;
+    if (res.skipped) {
+      warnings.push(
+        'Conversas/mensagens não foram inseridas — RLS bloqueou. ' +
+        'Rode no SQL Editor do Supabase: ALTER TABLE conversations DISABLE ROW LEVEL SECURITY; ALTER TABLE messages DISABLE ROW LEVEL SECURITY;'
+      );
+    }
   } catch (e) { throw tagError('seedConversations', e); }
 
   try { memories = await seedMemories(tenantId, clients); } catch (e) { throw tagError('seedMemories', e); }
+  if (memories === 0 && clients.length > 0) warnings.push('Memórias IA não foram inseridas (tabela customer_memories indisponível).');
 
   return {
     barbers: barbers.length,
@@ -463,5 +487,6 @@ export async function seedDevTestData(tenantId: string): Promise<SeedReport> {
     conversations,
     messages,
     memories,
+    warnings,
   };
 }
