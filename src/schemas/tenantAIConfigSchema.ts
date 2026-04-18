@@ -1,0 +1,34 @@
+import { z } from 'zod';
+
+export const tenantAIConfigSchema = z.object({
+  tenant_id: z.string().uuid(),
+  assistant_name: z.string().default('Assistente'),
+  assistant_avatar_url: z.string().url().optional().or(z.literal('')),
+  assistant_gender: z.enum(['masculino', 'feminino', 'neutro']).optional(),
+  tone_of_voice: z.enum(['profissional', 'descontraido', 'premium', 'amigo']).optional(),
+  service_style: z.enum(['direto', 'consultivo', 'acolhedor']).optional(),
+  formality_level: z.number().int().min(1).max(5).optional(),
+  uses_emojis: z.boolean().default(true),
+  uses_slang: z.boolean().default(false),
+  can_auto_schedule: z.boolean().default(false),
+  must_confirm_before_booking: z.boolean().default(true),
+  can_reply_outside_business_hours: z.boolean().default(false),
+  can_suggest_services: z.boolean().default(true),
+  can_negotiate_price: z.boolean().default(false),
+  can_collect_feedback: z.boolean().default(true),
+  max_messages_before_escalation: z.number().int().min(1).default(20),
+  escalation_keywords: z.array(z.string()).optional(),
+  important_notes: z.string().optional(),
+  forbidden_topics: z.array(z.string()).optional(),
+  signature_services: z.string().optional(),
+  upsell_guidelines: z.string().optional(),
+  greeting_message: z.string().optional(),
+  out_of_hours_message: z.string().optional(),
+  booking_confirmation_template: z.string().optional(),
+  booking_reminder_template: z.string().optional(),
+  cancellation_message_template: z.string().optional(),
+  post_service_thankyou: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type TenantAIConfig = z.infer<typeof tenantAIConfigSchema>;

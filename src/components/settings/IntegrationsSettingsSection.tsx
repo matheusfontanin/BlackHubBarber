@@ -1,146 +1,274 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Wifi, WifiOff, Calendar, Webhook, MessageCircle, ExternalLink } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Loader2, MessageCircle, Calendar, Webhook, QrCode, CheckCircle, AlertCircle, Phone } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
-import { getIntegrationsOverview } from '@/services/settingsService';
-import type { IntegrationsOverview } from '@/types/settings';
+import { supabase } from '@/lib/supabase/client';
+import { handleError, handleSuccess } from '@/lib/errors';
 
-type StatusColor = 'green' | 'red' | 'yellow';
-const STATUS_COLORS: Record<StatusColor, string> = {
-  green: 'bg-green-400',
-  red: 'bg-red-400',
-  yellow: 'bg-yellow-400',
-};
+interface WhatsAppModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  tenantId: string;
+}
 
-function StatusDot({ color }: { color: StatusColor }) {
-  return <span className={`inline-block w-2 h-2 rounded-full ${STATUS_COLORS[color]}`} />;
+function WhatsAppModal({ isOpen, onClose, tenantId }: WhatsAppModalProps) {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'connecting' | 'scanning' | 'connected'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const startConnection = async () => {
+    if (!phoneNumber.trim()) return;
+
+    setStatus('connecting');
+    setError(null);
+
+    try {
+      // Call Edge Function to create instance
+      const { data, error } = await supabase.functions.invoke('evolution-connect', {
+        body: { tenantId, phoneNumber: phoneNumber.trim() },
+      });
+
+      if (error) throw error;
+
+      setQrCode(data.qrCode);
+      setStatus('scanning');
+
+      // Poll for status
+      const pollStatus = async () => {
+        try {
+          const { data: statusData } = await supabase.functions.invoke('evolution-status', {
+            body: { tenantId },
+          });
+
+          if (statusData.status === 'open') {
+            setStatus('connected');
+            handleSuccess('WhatsApp conectado com sucesso!');
+            setTimeout(() => onClose(), 2000);
+          } else {
+            setTimeout(pollStatus, 2000); // Poll every 2 seconds
+          }
+        } catch (err) {
+          setError('Erro ao verificar status');
+        }
+      };
+
+      pollStatus();
+    } catch (err) {
+      setError('Erro ao iniciar conexão');
+      setStatus('idle');
+    }
+  };
+
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${isOpen ? '' : 'pointer-events-none'}`}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="relative bg-sidebar border border-border rounded-2xl p-6 max-w-md w-full mx-4"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-primary">Conectar WhatsApp</h3>
+          <button onClick={onClose} className="text-muted hover:text-primary">✕</button>
+        </div>
+
+        {status === 'idle' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-primary mb-2">
+                Número do WhatsApp *
+              </label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="(11) 99999-9999"
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl"
+              />
+            </div>
+            <button
+              onClick={startConnection}
+              disabled={!phoneNumber.trim()}
+              className="w-full btn-primary"
+            >
+              <QrCode size={16} className="mr-2" />
+              Gerar QR Code
+            </button>
+          </div>
+        )}
+
+        {status === 'connecting' && (
+          <div className="text-center py-8">
+            <Loader2 className="animate-spin text-gold mx-auto mb-4" size={32} />
+            <p className="text-primary">Criando instância...</p>
+          </div>
+        )}
+
+        {status === 'scanning' && qrCode && (
+          <div className="text-center space-y-4">
+            <p className="text-primary mb-4">Escaneie o QR Code com o WhatsApp</p>
+            <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" className="mx-auto border border-border rounded-lg" />
+            <p className="text-sm text-muted">Abra WhatsApp → Configurações → WhatsApp Web</p>
+          </div>
+        )}
+
+        {status === 'connected' && (
+          <div className="text-center py-8">
+            <CheckCircle className="text-green-500 mx-auto mb-4" size={48} />
+            <p className="text-primary font-bold">Conectado!</p>
+            <p className="text-sm text-muted mt-2">Sua IA começará a responder mensagens automaticamente.</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-4 p-3 bg-red-950/60 border border-red-500/20 rounded-xl">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
 }
 
 export default function IntegrationsSettingsSection() {
   const { tenantId } = useTenant();
   const [loading, setLoading] = useState(true);
-  const [integrations, setIntegrations] = useState<IntegrationsOverview | null>(null);
+  const [whatsappModal, setWhatsappModal] = useState(false);
+  const [whatsappStatus, setWhatsappStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
 
   useEffect(() => {
-    if (tenantId) loadData();
+    if (tenantId) loadStatus();
   }, [tenantId]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadStatus = async () => {
     try {
-      const data = await getIntegrationsOverview(tenantId!);
-      setIntegrations(data);
+      // Check WhatsApp status
+      const { data: profile } = await supabase
+        .from('tenant_business_profile')
+        .select('whatsapp_number')
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (profile?.whatsapp_number) {
+        // Check if connected via Edge Function
+        const { data: statusData } = await supabase.functions.invoke('evolution-status', {
+          body: { tenantId },
+        });
+        setWhatsappStatus(statusData?.status === 'open' ? 'connected' : 'disconnected');
+      }
     } catch (err) {
-      console.error('Erro ao carregar integrações:', err);
+      console.error('Error loading status:', err);
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-secondary" size={32} /></div>;
+    return (
+      <div className="flex justify-center p-12">
+        <Loader2 className="animate-spin text-secondary" size={32} />
+      </div>
+    );
   }
-
-  const wa = integrations?.whatsapp;
-  const gc = integrations?.google_calendar;
-  const n8n = integrations?.n8n;
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-heading font-medium tracking-tight text-primary border-b border-primary/[0.06] pb-4">
-        Integrações
-      </h2>
-
-      <div className="space-y-4">
-        {/* WhatsApp / Evolution API */}
-        <div className="p-5 bg-bg/60 rounded-xl border border-primary/[0.06] space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                <MessageCircle size={18} className="text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-primary">WhatsApp / Evolution API</h3>
-                <p className="text-[10px] text-primary/35 uppercase tracking-wider font-bold">Canal principal de atendimento</p>
-              </div>
+      {/* WhatsApp Card */}
+      <div className="bg-sidebar border border-border rounded-xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/25 flex items-center justify-center">
+              <MessageCircle size={20} className="text-green-500" />
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold">
-              <StatusDot color={wa?.status === 'connected' ? 'green' : 'red'} />
-              <span className={wa?.status === 'connected' ? 'text-green-600' : 'text-red-400'}>
-                {wa?.status === 'connected' ? 'Conectado' : 'Desconectado'}
-              </span>
+            <div>
+              <h3 className="font-bold text-primary">WhatsApp Business</h3>
+              <p className="text-sm text-muted">Conecte sua IA para responder mensagens automaticamente</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div>
-              <p className="text-[10px] font-bold text-primary/30 uppercase">Instância</p>
-              <p className="text-sm font-medium text-primary">{wa?.instance_name || '—'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-primary/30 uppercase">Número</p>
-              <p className="text-sm font-medium text-primary">{wa?.phone || 'Não configurado'}</p>
-            </div>
+          <div className="flex items-center gap-2">
+            {whatsappStatus === 'connected' ? (
+              <CheckCircle size={16} className="text-green-500" />
+            ) : (
+              <AlertCircle size={16} className="text-red-500" />
+            )}
+            <span className={`text-xs font-medium ${whatsappStatus === 'connected' ? 'text-green-500' : 'text-red-500'}`}>
+              {whatsappStatus === 'connected' ? 'Conectado' : 'Desconectado'}
+            </span>
           </div>
         </div>
 
-        {/* Google Calendar */}
-        <div className="p-5 bg-bg/60 rounded-xl border border-primary/[0.06] space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Calendar size={18} className="text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-primary">Google Calendar</h3>
-                <p className="text-[10px] text-primary/35 uppercase tracking-wider font-bold">Sincronização de agenda</p>
-              </div>
+        <div className="space-y-3">
+          <p className="text-sm text-muted">
+            Ao conectar, nossa IA começará a responder mensagens automaticamente conforme suas configurações.
+          </p>
+
+          <button
+            onClick={() => setWhatsappModal(true)}
+            className="btn-primary"
+          >
+            <QrCode size={16} className="mr-2" />
+            {whatsappStatus === 'connected' ? 'Reconectar' : 'Conectar via QR Code'}
+          </button>
+        </div>
+      </div>
+
+      {/* Google Calendar Card */}
+      <div className="bg-sidebar border border-border rounded-xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center">
+              <Calendar size={20} className="text-blue-500" />
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold">
-              <StatusDot color={gc?.connected ? 'green' : 'red'} />
-              <span className={gc?.connected ? 'text-green-600' : 'text-red-400'}>
-                {gc?.connected ? 'Conectado' : 'Desconectado'}
-              </span>
+            <div>
+              <h3 className="font-bold text-primary">Google Calendar</h3>
+              <p className="text-sm text-muted">Sincronize agendamentos com seu calendário</p>
             </div>
           </div>
-          <div className="pt-2">
-            <p className="text-[10px] font-bold text-primary/30 uppercase">Email / Calendário</p>
-            <p className="text-sm font-medium text-primary">{gc?.email || 'Não conectado'}</p>
-          </div>
+          <AlertCircle size={16} className="text-red-500" />
         </div>
 
-        {/* N8N */}
-        <div className="p-5 bg-bg/60 rounded-xl border border-primary/[0.06] space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Webhook size={18} className="text-orange-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-primary">N8N / Webhook</h3>
-                <p className="text-[10px] text-primary/35 uppercase tracking-wider font-bold">Automações e fluxos</p>
-              </div>
+        <div className="space-y-3">
+          <p className="text-sm text-muted">
+            Em breve: sincronização automática de agendamentos.
+          </p>
+          <button disabled className="btn-secondary opacity-50 cursor-not-allowed">
+            Em breve
+          </button>
+        </div>
+      </div>
+
+      {/* N8N Card */}
+      <div className="bg-sidebar border border-border rounded-xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center">
+              <Webhook size={20} className="text-purple-500" />
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold">
-              <StatusDot color={n8n?.status === 'connected' ? 'green' : n8n?.webhook_url ? 'yellow' : 'red'} />
-              <span className={n8n?.status === 'connected' ? 'text-green-600' : 'text-primary/40'}>
-                {n8n?.status === 'connected' ? 'Ativo' : n8n?.webhook_url ? 'Configurado' : 'Não configurado'}
-              </span>
+            <div>
+              <h3 className="font-bold text-primary">N8N</h3>
+              <p className="text-sm text-muted">Orquestração de mensagens e IA</p>
             </div>
           </div>
-          <div className="pt-2">
-            <p className="text-[10px] font-bold text-primary/30 uppercase">Webhook URL</p>
-            <p className="text-sm font-medium text-primary font-mono">
-              {n8n?.webhook_url ? `${n8n.webhook_url.substring(0, 40)}...` : '—'}
-            </p>
+          <CheckCircle size={16} className="text-green-500" />
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm text-muted">
+            Sistema de automação configurado e ativo.
+          </p>
+          <div className="text-xs text-muted">
+            Webhook: https://your-project.supabase.co/functions/v1/n8n-webhook
           </div>
         </div>
       </div>
 
-      <div className="p-4 bg-secondary/5 border border-secondary/10 rounded-xl">
-        <p className="text-xs text-secondary/80 font-medium">
-          💡 As integrações são configuradas durante o onboarding e podem ser gerenciadas pelo painel admin. 
-          Ajustes avançados de webhook e tokens estarão disponíveis em breve.
-        </p>
-      </div>
+      <WhatsAppModal
+        isOpen={whatsappModal}
+        onClose={() => setWhatsappModal(false)}
+        tenantId={tenantId!}
+      />
     </div>
   );
 }

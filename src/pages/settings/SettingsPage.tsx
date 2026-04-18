@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Building, Users, CalendarClock, Bot, Link as LinkIcon } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
 import { cn } from '@/lib/utils';
-import BarbershopSettingsSection from '@/components/settings/BarbershopSettingsSection';
+import { BarbershopSettingsSection } from '@/components/settings/BarbershopSettingsSection';
 import TeamSettingsSection from '@/components/settings/TeamSettingsSection';
 import BookingSettingsSection from '@/components/settings/BookingSettingsSection';
 import AiSettingsSection from '@/components/settings/AiSettingsSection';
