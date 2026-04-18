@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { IMaskInput } from 'react-imask';
 import {
   Plus,
@@ -11,93 +13,97 @@ import {
   Trash2,
   X,
   Check,
-  Loader2
+  Loader2,
 } from 'lucide-react';
-import { crudService, Customer } from '@/services/crudService';
+import type { Customer } from '@/services/crudService';
 import { useTenant } from '@/hooks/useTenant';
+import {
+  useCustomers,
+  useCreateCustomer,
+  useUpdateCustomer,
+  useDeleteCustomer,
+} from '@/hooks/queries/useCustomers';
+import { customerFormSchema, type CustomerFormValues } from '@/schemas/customerSchema';
+import { handleError, handleSuccess } from '@/lib/errors';
 
 export default function CustomersPage() {
   const { tenantId, loading: tenantLoading } = useTenant();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [notes, setNotes] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const { data: customers = [], isLoading } = useCustomers(tenantId);
+  const createMutation = useCreateCustomer(tenantId);
+  const updateMutation = useUpdateCustomer(tenantId);
+  const deleteMutation = useDeleteCustomer(tenantId);
 
-  useEffect(() => {
-    if (tenantId) fetchCustomers();
-  }, [tenantId]);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerFormSchema),
+    defaultValues: { name: '', phone: '', email: '', notes: '' },
+  });
 
-  const fetchCustomers = async () => {
-    if (!tenantId) return;
-    setLoading(true);
-    try {
-      const data = await crudService.getCustomers(tenantId);
-      setCustomers(data);
-    } catch (error: unknown) {
-      console.error('Erro ao buscar clientes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const phone = watch('phone');
 
   const handleOpenModal = (customer?: Customer) => {
     if (customer) {
       setEditingCustomer(customer);
-      setName(customer.name);
-      setPhone(customer.phone);
-      setEmail(customer.email || '');
-      setNotes(customer.notes || '');
+      reset({
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email ?? '',
+        notes: customer.notes ?? '',
+      });
     } else {
       setEditingCustomer(null);
-      setName('');
-      setPhone('');
-      setEmail('');
-      setNotes('');
+      reset({ name: '', phone: '', email: '', notes: '' });
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: CustomerFormValues) => {
     if (!tenantId) return;
-    setIsSaving(true);
+    const payload = {
+      name: values.name,
+      phone: values.phone,
+      email: values.email,
+      notes: values.notes,
+      tenant_id: tenantId,
+    };
     try {
-      const customerData = { name, phone, email, notes, tenant_id: tenantId };
       if (editingCustomer?.id) {
-        await crudService.updateCustomer(editingCustomer.id, customerData);
+        await updateMutation.mutateAsync({ id: editingCustomer.id, data: payload });
+        handleSuccess('Cliente atualizado');
       } else {
-        await crudService.createCustomer(customerData);
+        await createMutation.mutateAsync(payload);
+        handleSuccess('Cliente cadastrado');
       }
       setIsModalOpen(false);
-      fetchCustomers();
-    } catch (error: unknown) {
-      console.error('Erro ao salvar cliente:', error);
-      alert('Erro ao salvar cliente. Tente novamente.');
-    } finally {
-      setIsSaving(false);
+    } catch (err) {
+      handleError(err, 'Não foi possível salvar o cliente');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
     try {
-      await crudService.deleteCustomer(id);
-      fetchCustomers();
-    } catch (error: unknown) {
-      console.error('Erro ao excluir cliente:', error);
+      await deleteMutation.mutateAsync(id);
+      handleSuccess('Cliente removido');
+    } catch (err) {
+      handleError(err, 'Não foi possível excluir o cliente');
     }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.phone.includes(searchTerm),
   );
 
   if (tenantLoading) return null;
@@ -121,7 +127,6 @@ export default function CustomersPage() {
               className="input-dark pl-10"
             />
           </div>
-          {/* Desktop: inline button; Mobile: floating FAB (see below) */}
           <button
             onClick={() => handleOpenModal()}
             className="btn-gold hidden md:flex items-center gap-2 shrink-0"
@@ -131,7 +136,7 @@ export default function CustomersPage() {
         </div>
       </header>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin text-gold" size={36} />
         </div>
@@ -145,13 +150,9 @@ export default function CustomersPage() {
         </div>
       ) : (
         <>
-          {/* ── Mobile: card list ── */}
           <div className="md:hidden grid grid-cols-1 gap-3">
             {filteredCustomers.map((customer) => (
-              <div
-                key={customer.id}
-                className="card p-4 flex items-start gap-3"
-              >
+              <div key={customer.id} className="card p-4 flex items-start gap-3">
                 <div className="w-11 h-11 rounded-xl bg-gold/10 border border-gold/20 text-gold flex items-center justify-center font-bold text-base shrink-0">
                   {customer.name.charAt(0).toUpperCase()}
                 </div>
@@ -191,7 +192,6 @@ export default function CustomersPage() {
             ))}
           </div>
 
-          {/* ── Desktop: table ── */}
           <div className="hidden md:block card overflow-hidden">
             <table className="w-full text-left">
               <thead>
@@ -252,7 +252,6 @@ export default function CustomersPage() {
         </>
       )}
 
-      {/* Mobile floating action button */}
       <button
         onClick={() => handleOpenModal()}
         aria-label="Novo cliente"
@@ -261,7 +260,6 @@ export default function CustomersPage() {
         <Plus size={22} strokeWidth={2.5} />
       </button>
 
-      {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6">
@@ -286,17 +284,18 @@ export default function CustomersPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-5 overflow-y-auto">
+              <form onSubmit={handleSubmit(onSubmit)} className="p-5 sm:p-6 space-y-5 overflow-y-auto">
                 <div className="space-y-1">
                   <label className="label-xs">Nome Completo</label>
                   <input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    {...register('name')}
                     className="input-dark"
                     placeholder="ex: João Silva"
-                    required
                   />
+                  {errors.name && (
+                    <p className="text-[11px] text-error">{errors.name.message}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -304,41 +303,49 @@ export default function CustomersPage() {
                     <label className="label-xs"><Phone size={11} /> WhatsApp</label>
                     <IMaskInput
                       mask="(00) 00000-0000"
-                      value={phone}
-                      onAccept={(value: string) => setPhone(value)}
+                      value={phone ?? ''}
+                      onAccept={(value: string) =>
+                        setValue('phone', value, { shouldValidate: true })
+                      }
                       className="input-dark font-mono"
                       placeholder="(00) 00000-0000"
-                      required
                     />
+                    {errors.phone && (
+                      <p className="text-[11px] text-error">{errors.phone.message}</p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <label className="label-xs"><Mail size={11} /> Email</label>
                     <input
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      {...register('email')}
                       className="input-dark font-mono"
                       placeholder="ex@email.com"
                     />
+                    {errors.email && (
+                      <p className="text-[11px] text-error">{errors.email.message}</p>
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="label-xs">Observações</label>
                   <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    {...register('notes')}
                     className="input-dark resize-none h-24"
                     placeholder="Preferências, alergias, etc..."
                   />
+                  {errors.notes && (
+                    <p className="text-[11px] text-error">{errors.notes.message}</p>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isSubmitting}
                   className="btn-gold w-full py-3.5 flex items-center justify-center gap-2"
                 >
-                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : (
+                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : (
                     <><Check size={16} /> {editingCustomer ? 'Salvar Alterações' : 'Cadastrar Cliente'}</>
                   )}
                 </button>

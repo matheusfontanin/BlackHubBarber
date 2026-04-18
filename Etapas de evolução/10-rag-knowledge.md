@@ -6,7 +6,7 @@
 
 ## Objetivo
 
-Permitir que o barbeiro envie documentos (cardápio detalhado, FAQ, regras internas, histórico de atendimento) e a IA consulte esses documentos durante conversas via **Retrieval-Augmented Generation (RAG)**.
+Permitir que o barbeiro envie documentos (cardápio detalhado, FAQ, regras internas, histórico de atendimento, PDFs) e a IA consulte esses documentos durante conversas via **Retrieval-Augmented Generation (RAG)**.
 
 O `pgvector` já está instalado em [00001_initial_schema.sql:8](supabase/migrations/00001_initial_schema.sql#L8) — falta a UI, pipeline de embeddings e tool para a IA.
 

@@ -1,73 +1,31 @@
-# Próxima Sessão — Pós-Patch de Evolução
+# Próxima Sessão — Pós Etapa 01 (Fundação Técnica)
 
-> Documento gerado em: 2026-04-02
-
----
-
-## O que foi feito neste patch
-
-### 1. Modelagem de Dados (Supabase)
-- Criada tabela `tenant_settings` — dados complementares da barbearia
-- Criada tabela `tenant_ai_settings` — configurações estruturadas da IA
-- Criada tabela `tenant_booking_settings` — regras de agendamento
-- Criada tabela `barbers` — profissionais da equipe
-- Todas as tabelas com RLS habilitado e policies baseadas em tenant_members
-- Índices de performance criados
-
-### 2. Types TypeScript
-- `src/types/settings.ts` — types para todos os domínios de configuração
-- `src/types/onboarding.ts` — expandido com TeamBarberData e AiConfigData
-
-### 3. Camada de Dados (Services)
-- `src/services/settingsService.ts` — CRUD de configurações (upsert pattern)
-- `src/services/teamService.ts` — CRUD de barbeiros (barbers table)
-- `src/services/onboardingService.ts` — expandido para persistir novos dados
-
-### 4. Página de Configurações (5 abas)
-- BarbershopSettingsSection — dados institucionais + estratégicos
-- TeamSettingsSection — CRUD completo de barbeiros com modal
-- BookingSettingsSection — regras de agenda com toggles
-- AiSettingsSection — personalidade, contexto, comportamento, mensagens
-- IntegrationsSettingsSection — visão consolidada de integrações
-- SettingsPage reescrito com sidebar de 5 seções
-
-### 5. Onboarding Expandido (9 etapas)
-- Step 5 (novo) — Equipe
-- Step 8 (novo) — IA
-- Fluxo expandido sem quebrar a UX existente
+> Documento gerado em: 2026-04-18
 
 ---
 
-## Pendências
+## O que foi feito nesta sessão
 
-### Prioridade Alta
-- Conectar aba Barbearia com update da tabela `tenants` principal
-- Popular dados pré-existentes para tenants que já completaram onboarding
+### Etapa 00 — Plano Geral revisado
+- Leitura e validação do [00-PLANO-GERAL.md](../../Etapas%20de%20evolu%C3%A7%C3%A3o/OK-00-PLANO-GERAL.md)
 
-### Prioridade Média
-- Reconexão de WhatsApp via aba de integrações
-- Gestão de horários na aba Agenda
-- Conectar barbeiros com agenda de atendimentos
-- Upload de foto para barbeiros
+### Etapa 01 — Fundação Técnica concluída
+1. **TanStack Query**: `queryClient` em `src/lib/queryClient.ts`, provider em `src/main.tsx`, devtools só em dev, hooks por domínio em `src/hooks/queries/` (customers, services, appointments, settings, conversations). `CustomersPage` migrada como referência.
+2. **Zod schemas** em `src/schemas/` (tenantSettings, aiSettings, bookingSettings, customer + customerForm, service, appointment). `src/types/settings.ts` reexporta os tipos inferidos.
+3. **ErrorBoundary + Sonner**: `<Toaster theme="dark"/>` no `App`, `ErrorBoundary` envolvendo rotas autenticadas, helper `src/lib/errors.ts` (`handleError`/`handleSuccess`). Todos os `alert()` de Settings substituídos por toasts.
+4. **Vitest + React Testing Library**: `vitest.config.ts`, `src/test/setup.ts`, mock de Supabase em `src/test/mocks/supabase.ts`, scripts `test`, `test:watch`, `test:ui`. Primeiros 16 testes verdes em `lib/utils`, `services/settingsService`, `schemas/customerSchema`.
 
-### Prioridade Baixa
-- Edge function para contexto dinâmico da IA
-- Versionamento de configurações IA
-- Dashboard de integrações com histórico
-
----
-
-## Riscos
-
-1. Dados duplicados entre `tenants` e `tenant_settings` — manter sincronizados
-2. `barbers` vs `tenant_members` — appointments.barber_id ainda referencia tenant_members
-3. RLS aberto para todo membro do tenant — pode precisar de roles granulares
+Decisões 006–009 registradas em [decisoes.md](./decisoes.md).
 
 ---
 
 ## Próximo passo recomendado
 
-1. Testar fluxo completo de onboarding com novo usuário
-2. Verificar configurações com tenant existente
-3. Conectar equipe à agenda
-4. Iniciar construção do contexto dinâmico da IA
+Etapa 02 — Refatoração de Componentes Grandes ([02-refatoracao-componentes.md](../../Etapas%20de%20evolu%C3%A7%C3%A3o/02-refatoracao-componentes.md)). Quebrar `CalendarPage` (932 linhas) e `ChatPage` (799 linhas) usando os hooks de query já disponíveis.
+
+## Pendências herdadas (continuam valendo)
+
+- Sincronização `tenants` × `tenant_settings`
+- Reconexão de WhatsApp via aba de integrações
+- Gestão de horários na aba Agenda
+- `npm run lint` ainda reporta erros nos Edge Functions do Supabase (Deno runtime) — excluir `supabase/functions/**` do tsconfig ou criar tsconfig separado.

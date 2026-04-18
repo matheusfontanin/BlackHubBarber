@@ -11,6 +11,7 @@ import {
 } from '@/services/settingsService';
 import type { TenantSettings } from '@/types/settings';
 import { IMaskInput } from 'react-imask';
+import { handleError, handleSuccess } from '@/lib/errors';
 
 const MAX_LOGO_BYTES = 500 * 1024; // 500KB hard cap on stored base64
 const MAX_LOGO_DIMENSION = 512;    // pixels (longest edge) before encoding
@@ -95,7 +96,7 @@ export default function BarbershopSettingsSection() {
 
       setLogoUrl(tenantLogo);
     } catch (err) {
-      console.error('Erro ao carregar dados da barbearia:', err);
+      handleError(err, 'Não foi possível carregar os dados da barbearia');
     } finally {
       setLoading(false);
     }
@@ -123,7 +124,7 @@ export default function BarbershopSettingsSection() {
       setLogoUrl(dataUrl);
       window.dispatchEvent(new CustomEvent('tenant-logo-updated', { detail: dataUrl }));
     } catch (err) {
-      console.error('Erro ao enviar logo:', err);
+      handleError(err, 'Não foi possível enviar o logo. Tente novamente.');
       setLogoError('Não foi possível enviar o logo. Tente novamente.');
     } finally {
       setLogoUploading(false);
@@ -138,7 +139,7 @@ export default function BarbershopSettingsSection() {
       setLogoUrl(null);
       window.dispatchEvent(new CustomEvent('tenant-logo-updated', { detail: null }));
     } catch (err) {
-      console.error('Erro ao remover logo:', err);
+      handleError(err, 'Não foi possível remover o logo.');
       setLogoError('Não foi possível remover o logo.');
     } finally {
       setLogoUploading(false);
@@ -153,10 +154,10 @@ export default function BarbershopSettingsSection() {
     try {
       await upsertTenantSettings({ ...form, tenant_id: tenantId } as TenantSettings);
       setSaved(true);
+      handleSuccess('Configurações salvas');
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error('Erro ao salvar:', err);
-      alert('Erro ao salvar configurações.');
+      handleError(err, 'Erro ao salvar configurações');
     } finally {
       setSaving(false);
     }

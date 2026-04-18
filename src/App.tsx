@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 import OnboardingPage from '@/pages/onboarding/OnboardingPage';
@@ -13,6 +14,7 @@ import ChatPage from '@/pages/chat/ChatPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Rota protegida: exige autenticação
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -49,6 +51,19 @@ function TenantRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster
+        position="top-right"
+        theme="dark"
+        richColors
+        closeButton
+        toastOptions={{
+          style: {
+            background: '#1A1A2E',
+            border: '1px solid rgba(196, 163, 90, 0.25)',
+            color: '#FAFAF8',
+          },
+        }}
+      />
       <Router>
         <Routes>
           {/* Public Routes */}
@@ -60,13 +75,23 @@ export default function App() {
             path="/onboarding"
             element={
               <ProtectedRoute>
-                <OnboardingPage />
+                <ErrorBoundary>
+                  <OnboardingPage />
+                </ErrorBoundary>
               </ProtectedRoute>
             }
           />
 
           {/* Dashboard: autenticado e com tenant */}
-          <Route element={<TenantRoute><DashboardLayout /></TenantRoute>}>
+          <Route
+            element={
+              <TenantRoute>
+                <ErrorBoundary>
+                  <DashboardLayout />
+                </ErrorBoundary>
+              </TenantRoute>
+            }
+          >
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/appointments" element={<AppointmentsPage />} />

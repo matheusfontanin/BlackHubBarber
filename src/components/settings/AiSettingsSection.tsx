@@ -3,6 +3,7 @@ import { Check, Loader2, Bot, Sparkles } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
 import { getAISettings, upsertAISettings } from '@/services/settingsService';
 import type { TenantAISettings, ToneOfVoice, ServiceStyle } from '@/types/settings';
+import { handleError, handleSuccess } from '@/lib/errors';
 
 const INPUT_CLS = "w-full px-4 py-3 bg-bg border border-primary/8 rounded-xl outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all text-sm font-medium";
 const LABEL_CLS = "text-[10px] font-bold text-primary/40 uppercase tracking-wider block mb-2";
@@ -49,7 +50,7 @@ export default function AiSettingsSection() {
       const data = await getAISettings(tenantId!);
       if (data) setForm(data);
     } catch (err) {
-      console.error('Erro ao carregar config IA:', err);
+      handleError(err, 'Não foi possível carregar as configurações da IA');
     } finally {
       setLoading(false);
     }
@@ -63,10 +64,10 @@ export default function AiSettingsSection() {
     try {
       await upsertAISettings({ ...form, tenant_id: tenantId } as TenantAISettings);
       setSaved(true);
+      handleSuccess('Configurações da IA salvas');
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error('Erro ao salvar:', err);
-      alert('Erro ao salvar configurações da IA.');
+      handleError(err, 'Erro ao salvar configurações da IA');
     } finally {
       setSaving(false);
     }

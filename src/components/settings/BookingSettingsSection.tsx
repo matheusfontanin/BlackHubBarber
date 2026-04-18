@@ -3,6 +3,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
 import { getBookingSettings, upsertBookingSettings } from '@/services/settingsService';
 import type { TenantBookingSettings } from '@/types/settings';
+import { handleError, handleSuccess } from '@/lib/errors';
 
 const INPUT_CLS = "w-full px-4 py-3 bg-bg border border-primary/8 rounded-xl outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all text-sm font-medium";
 const LABEL_CLS = "text-[10px] font-bold text-primary/40 uppercase tracking-wider block mb-2";
@@ -37,7 +38,7 @@ export default function BookingSettingsSection() {
       const data = await getBookingSettings(tenantId!);
       if (data) setForm(data);
     } catch (err) {
-      console.error('Erro ao carregar config de agenda:', err);
+      handleError(err, 'Não foi possível carregar as regras da agenda');
     } finally {
       setLoading(false);
     }
@@ -51,10 +52,10 @@ export default function BookingSettingsSection() {
     try {
       await upsertBookingSettings({ ...form, tenant_id: tenantId } as TenantBookingSettings);
       setSaved(true);
+      handleSuccess('Regras da agenda salvas');
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error('Erro ao salvar:', err);
-      alert('Erro ao salvar regras da agenda.');
+      handleError(err, 'Erro ao salvar regras da agenda');
     } finally {
       setSaving(false);
     }
