@@ -70,6 +70,7 @@ export interface TenantAIConfig {
   can_auto_schedule?: boolean;
   must_confirm_before_booking?: boolean;
   can_reply_outside_business_hours?: boolean;
+  ai_globally_enabled?: boolean;
   can_suggest_services?: boolean;
   can_negotiate_price?: boolean;
   can_collect_feedback?: boolean;

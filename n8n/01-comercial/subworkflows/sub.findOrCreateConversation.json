@@ -1,0 +1,75 @@
+{
+  "name": "Commercial — Find or Create Conversation (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/conversations?tenant_id=eq.{{ $json.tenant_id }}&external_contact_phone=eq.{{ $json.phone }}&channel=eq.whatsapp&status=in.(open,active,ai_handling)&select=*&order=created_at.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "find-conversation",
+      "name": "Buscar Conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse Payload').item.json;\nconst existing = Array.isArray($('Buscar Conversa').item.json) ? $('Buscar Conversa').item.json : [];\nif (existing.length > 0) {\n  return [{ json: { ...ctx, conversation: existing[0] } }];\n}\nreturn [{ json: { ...ctx } }];"
+      },
+      "id": "check-existing",
+      "name": "Verificar Conversa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $json.tenant_id }}\",\n  \"client_id\": {{ $json.client_id ? JSON.stringify($json.client_id) : 'null' }},\n  \"external_contact_phone\": \"{{ $json.phone }}\",\n  \"external_contact_name\": {{ $json.name ? JSON.stringify($json.name) : 'null' }},\n  \"channel\": \"whatsapp\",\n  \"status\": \"open\"\n}"
+      },
+      "id": "create-conversation",
+      "name": "Criar Conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Verificar Conversa').item.json;\nif (ctx.conversation) return [{ json: ctx }];\nconst created = Array.isArray($('Criar Conversa').item.json) ? $('Criar Conversa').item.json[0] : $('Criar Conversa').item.json;\nreturn [{ json: { ...ctx, conversation: created } }];"
+      },
+      "id": "return-conversation",
+      "name": "Retornar Conversa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Conversa", "type": "main", "index": 0 }]] },
+    "Buscar Conversa": { "main": [[{ "node": "Verificar Conversa", "type": "main", "index": 0 }]] },
+    "Verificar Conversa": { "main": [[{ "node": "Criar Conversa", "type": "main", "index": 0 }], [{ "node": "Retornar Conversa", "type": "main", "index": 0 }]] },
+    "Criar Conversa": { "main": [[{ "node": "Retornar Conversa", "type": "main", "index": 0 }]] }
+  }
+}

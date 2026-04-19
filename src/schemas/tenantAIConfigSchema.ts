@@ -16,6 +16,7 @@ export const tenantAIConfigSchema = z.object({
   can_suggest_services: z.boolean().default(true),
   can_negotiate_price: z.boolean().default(false),
   can_collect_feedback: z.boolean().default(true),
+  ai_globally_enabled: z.boolean().default(true),
   max_messages_before_escalation: z.number().int().min(1).default(20),
   escalation_keywords: z.array(z.string()).optional(),
   important_notes: z.string().optional(),

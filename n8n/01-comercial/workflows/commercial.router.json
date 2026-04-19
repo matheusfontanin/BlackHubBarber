@@ -22,7 +22,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenant_ai_settings?tenant_id=eq.{{ $json.tenant.id }}&select=*&limit=1",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenant_ai_config?tenant_id=eq.{{ $json.tenant.id }}&select=*&limit=1",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

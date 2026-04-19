@@ -1,0 +1,75 @@
+{
+  "name": "Commercial — Find or Create Client (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients?tenant_id=eq.{{ $json.tenant_id }}&phone=like.*{{ $json.phone }}*&select=*&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "find-client",
+      "name": "Buscar Cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Parse Payload').item.json; const found = Array.isArray($('Buscar Cliente').item.json) ? $('Buscar Cliente').item.json[0] : null;\nif (found) return [{ json: { ...input, client: found, created: false } }];\nif (!input.name) return [{ json: { ...input, client: null, created: false } }];\nreturn [{ json: { ...input, create_new: true } }];"
+      },
+      "id": "check-client",
+      "name": "Verificar Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $json.tenant_id }}\",\n  \"name\": {{ JSON.stringify($json.name || '') }},\n  \"phone\": \"{{ $json.phone }}\",\n  \"email\": {{ JSON.stringify($json.email || null) }}\n}"
+      },
+      "id": "create-client",
+      "name": "Criar Cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Verificar Cliente').item.json;\nif (ctx.client) return [{ json: ctx }];\nif (ctx.create_new) { const created = Array.isArray($('Criar Cliente').item.json) ? $('Criar Cliente').item.json[0] : $('Criar Cliente').item.json; return [{ json: { ...ctx, client: created, created: true } }]; }\nreturn [{ json: { ...ctx, client: null, created: false } }];"
+      },
+      "id": "return-client",
+      "name": "Retornar Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Cliente", "type": "main", "index": 0 }]] },
+    "Buscar Cliente": { "main": [[{ "node": "Verificar Cliente", "type": "main", "index": 0 }]] },
+    "Verificar Cliente": { "main": [[{ "node": "Criar Cliente", "type": "main", "index": 0 }], [{ "node": "Retornar Cliente", "type": "main", "index": 0 }]] },
+    "Criar Cliente": { "main": [[{ "node": "Retornar Cliente", "type": "main", "index": 0 }]] }
+  }
+}

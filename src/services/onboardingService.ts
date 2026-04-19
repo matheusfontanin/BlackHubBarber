@@ -101,7 +101,7 @@ export async function saveOnboardingData(data: OnboardingData) {
     if (data.aiSettings) {
       const ai = data.aiSettings;
       const { error: aiError } = await supabase
-        .from('tenant_ai_settings')
+        .from('tenant_ai_config')
         .insert({
           tenant_id: tenant.id,
           assistant_name: ai.assistantName || 'Assistente',

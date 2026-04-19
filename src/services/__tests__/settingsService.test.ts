@@ -85,21 +85,21 @@ describe('settingsService', () => {
   });
 
   describe('getAISettings / upsertAISettings', () => {
-    it('usa a tabela tenant_ai_settings e respeita tenant_id', async () => {
+    it('usa a tabela tenant_ai_config e respeita tenant_id', async () => {
       setBuilder(
-        'tenant_ai_settings',
+        'tenant_ai_config',
         createQueryBuilder({ data: { tenant_id: TENANT_ID, assistant_name: 'Maya' }, error: null }),
       );
 
       const result = await getAISettings(TENANT_ID);
 
       expect(result).toMatchObject({ tenant_id: TENANT_ID, assistant_name: 'Maya' });
-      expect(supabaseMock.from).toHaveBeenCalledWith('tenant_ai_settings');
+      expect(supabaseMock.from).toHaveBeenCalledWith('tenant_ai_config');
     });
 
     it('upsertAISettings retorna o registro persistido', async () => {
       const stored = { tenant_id: TENANT_ID, assistant_name: 'Maya' };
-      setBuilder('tenant_ai_settings', createQueryBuilder({ data: stored, error: null }));
+      setBuilder('tenant_ai_config', createQueryBuilder({ data: stored, error: null }));
 
       const result = await upsertAISettings({
         tenant_id: TENANT_ID,

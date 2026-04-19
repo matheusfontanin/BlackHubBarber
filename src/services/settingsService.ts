@@ -43,7 +43,7 @@ export async function upsertTenantSettings(settings: Partial<TenantSettings> & {
 
 export async function getAISettings(tenantId: string): Promise<TenantAISettings | null> {
   const { data, error } = await supabase
-    .from('tenant_ai_settings')
+    .from('tenant_ai_config')
     .select('*')
     .eq('tenant_id', tenantId)
     .maybeSingle();
@@ -56,7 +56,7 @@ export async function upsertAISettings(settings: Partial<TenantAISettings> & { t
   const payload = { ...settings, updated_at: new Date().toISOString() };
 
   const { data, error } = await supabase
-    .from('tenant_ai_settings')
+    .from('tenant_ai_config')
     .upsert(payload, { onConflict: 'tenant_id' })
     .select()
     .single();

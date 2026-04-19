@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/hooks/useTenant';
 import { Conversation, ConversationStatus, ConversationChannel } from '@/services/chatService';
@@ -6,6 +7,8 @@ import { useConversations } from './hooks/useConversations';
 import { useMessages } from './hooks/useMessages';
 import { useSendMessage } from './hooks/useSendMessage';
 import { useCustomerMemories } from './hooks/useCustomerMemories';
+import { useToggleConversationAI } from './hooks/useToggleConversationAI';
+import { useAIGlobalSwitch } from '@/hooks/queries/useAIGlobalSwitch';
 import { ConversationList } from './components/ConversationList';
 import { MessageThread } from './components/MessageThread';
 import { MessageComposer } from './components/MessageComposer';
@@ -34,6 +37,8 @@ export default function ChatPage() {
     refetchConversations();
   });
   const { memories } = useCustomerMemories(selectedConv?.client_id || null);
+  const { aiEnabled, loading: globalLoading, toggleAIGlobal } = useAIGlobalSwitch(tenantId);
+  const toggleConversationAI = useToggleConversationAI(tenantId);
 
   /* ── Select conversation ── */
   const handleSelectConv = (conv: Conversation) => {
@@ -55,10 +60,53 @@ export default function ChatPage() {
     }
   };
 
+  const handleToggleConversationAI = async (enabled: boolean) => {
+    if (!selectedConv) return;
+    await toggleConversationAI(selectedConv.id, enabled);
+    setSelectedConv({ ...selectedConv, ai_enabled: enabled });
+    refetchConversations();
+  };
+
+  const handleToggleGlobalAI = async () => {
+    if (typeof aiEnabled === 'undefined') return;
+    const nextState = !aiEnabled;
+    const confirmed = window.confirm(
+      `Tem certeza? Isso ${nextState ? 'ativará' : 'pausará'} a IA em todas as conversas.`,
+    );
+    if (!confirmed) return;
+    await toggleAIGlobal(nextState);
+  };
+
   if (tenantLoading) return null;
 
   return (
-    <div className='flex h-[calc(100vh-56px)] lg:h-screen overflow-hidden'>
+    <div className='flex flex-col h-[calc(100vh-56px)] lg:h-screen overflow-hidden'>
+      <div className="hidden lg:flex items-center justify-between gap-3 bg-sidebar border-b border-border px-5 py-4 w-full">
+        <div>
+          <h1 className="text-lg font-semibold text-primary">Chat</h1>
+          <p className="text-xs text-muted">Gerencie conversas e o comportamento da IA em tempo real.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {globalLoading ? (
+            <Loader2 size={18} className="animate-spin text-gold" />
+          ) : (
+            <button
+              type="button"
+              onClick={handleToggleGlobalAI}
+              disabled={typeof aiEnabled === 'undefined'}
+              className={cn(
+                'rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                aiEnabled
+                  ? 'border-emerald-400 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15'
+                  : 'border-amber-400 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15',
+              )}
+            >
+              {aiEnabled ? 'Pausar IA global' : 'Ativar IA global'}
+            </button>
+          )}
+        </div>
+      </div>
+      <div className='flex-1 flex overflow-hidden'>
       {/* ════════════════════════════════════════════════
           COLUMN 1 — Conversations List
           Mobile: hidden when a conversation is selected
@@ -91,6 +139,7 @@ export default function ChatPage() {
           loading={loadingMsgs}
           onBack={() => setSelectedConv(null)}
           onToggleProfile={handleToggleProfile}
+          onToggleAI={handleToggleConversationAI}
           showProfile={showProfile}
         />
 
@@ -140,6 +189,7 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

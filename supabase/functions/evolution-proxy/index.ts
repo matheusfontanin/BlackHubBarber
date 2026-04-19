@@ -51,8 +51,9 @@ serve(async (req: Request) => {
     }
 
     const url = new URL(req.url);
-    const action = url.searchParams.get('action');
-    const instanceName = url.searchParams.get('instanceName');
+    const requestBody = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const action = url.searchParams.get('action') ?? requestBody.action;
+    const instanceName = url.searchParams.get('instanceName') ?? requestBody.instanceName;
 
     if (!action) {
       return new Response(JSON.stringify({ error: 'Missing action param' }), {
@@ -96,6 +97,74 @@ serve(async (req: Request) => {
       evoRes = await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
         method: 'DELETE',
         headers: evoHeaders,
+      });
+    } else if (action === 'send-message') {
+      const { tenant_id, conversation_id, message_id, to, text } = requestBody as Record<string, string>;
+
+      if (!tenant_id || !conversation_id || !message_id || !to || !text) {
+        return new Response(JSON.stringify({ error: 'Missing required payload fields' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenant_id)
+        .maybeSingle();
+
+      if (memberError || !member) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('whatsapp_instance_id')
+        .eq('id', tenant_id)
+        .single();
+
+      if (tenantError || !tenant?.whatsapp_instance_id) {
+        return new Response(JSON.stringify({ error: 'Tenant whatsapp instance not configured' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      evoRes = await fetch(`${EVOLUTION_URL}/message/sendText/${tenant.whatsapp_instance_id}`, {
+        method: 'POST',
+        headers: evoHeaders,
+        body: JSON.stringify({
+          number: to,
+          text,
+        }),
+      });
+
+      const evoData = await evoRes.json().catch(() => ({}));
+      const updatePayload = {
+        delivery_status: evoRes.ok ? 'sent' : 'failed',
+        raw_payload: evoData,
+      };
+
+      await supabase
+        .from('messages')
+        .update(updatePayload)
+        .eq('id', message_id);
+
+      if (!evoRes.ok) {
+        return new Response(JSON.stringify({ ok: false, error: evoData?.error || 'Evolution send failed', data: evoData }), {
+          status: evoRes.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, data: evoData }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else {
       return new Response(JSON.stringify({ error: 'Unknown action' }), {

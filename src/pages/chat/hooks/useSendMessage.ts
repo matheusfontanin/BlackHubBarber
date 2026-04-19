@@ -11,7 +11,7 @@ export function useSendMessage(selectedConv: Conversation | null, onMessageSent?
 
     setIsSending(true);
     try {
-      const msg = await chatService.sendOwnerMessage(selectedConv.id, tenantId, content.trim());
+      const msg = await chatService.sendOwnerMessage(selectedConv, content.trim());
       onMessageSent?.(msg);
       return msg;
     } catch (err) {

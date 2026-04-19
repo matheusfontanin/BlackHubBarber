@@ -1,0 +1,21 @@
+{
+  "name": "Commercial — Resolve Actor (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $json;\nconst tenantPhone = String(ctx.tenant?.phone || '').replace(/\D/g, '');\nconst senderPhone = String(ctx.sender_phone || '').replace(/\D/g, '');\nconst isOwner = tenantPhone && senderPhone && tenantPhone.endsWith(senderPhone.slice(-9));\nreturn [{ json: { ...ctx, actor: isOwner ? 'owner' : 'customer', is_owner: isOwner } }];"
+      },
+      "id": "resolve-actor",
+      "name": "Resolver Ator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Resolver Ator", "type": "main", "index": 0 }]] }
+  }
+}

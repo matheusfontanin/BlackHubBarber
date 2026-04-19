@@ -39,20 +39,16 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenants?whatsapp_instance=eq.{{ $json.instance_name }}&select=id,name,phone,owner_name,opening_hours,whatsapp_instance&limit=1",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
-          ]
-        }
+        "workflowId": "sub.resolveTenant",
+        "input": {
+          "payload": "={{ { instance_name: $json.instance_name } }}"
+        },
+        "options": {}
       },
       "id": "resolve-tenant",
       "name": "Resolver Tenant",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
       "position": [640, 340]
     },
     {
@@ -62,9 +58,9 @@
           "conditions": [
             {
               "id": "has-tenant",
-              "leftValue": "={{ $json.length }}",
-              "rightValue": 0,
-              "operator": { "type": "number", "operation": "gt" }
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
             }
           ]
         }
@@ -78,7 +74,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients?tenant_id=eq.{{ $('Resolver Tenant').item.json[0].id }}&phone=like.*{{ $('Normalizar Payload').item.json.sender_phone }}*&select=id,name,phone,email&limit=1",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients?tenant_id=eq.{{ $('Resolver Tenant').item.json.data.id }}&phone=like.*{{ $('Normalizar Payload').item.json.sender_phone }}*&select=id,name,phone,email&limit=1",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -128,7 +124,7 @@
         },
         "sendBody": true,
         "bodyContentType": "json",
-        "jsonBody": "={\n  \"tenant_id\": \"{{ $('Resolver Tenant').item.json[0].id }}\",\n  \"name\": \"{{ $('Normalizar Payload').item.json.sender_name }}\",\n  \"phone\": \"{{ $('Normalizar Payload').item.json.sender_phone }}\"\n}"
+        "jsonBody": "={\n  \"tenant_id\": \"{{ $('Resolver Tenant').item.json.data.id }}\",\n  \"name\": \"{{ $('Normalizar Payload').item.json.sender_name }}\",\n  \"phone\": \"{{ $('Normalizar Payload').item.json.sender_phone }}\"\n}"
       },
       "id": "create-client",
       "name": "Criar Cliente",
@@ -138,7 +134,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const tenant = $('Resolver Tenant').item.json[0];\nconst msg = $('Normalizar Payload').item.json;\n\nlet client;\nconst existing = $('Buscar Cliente').item.json;\nif (existing && existing.length > 0) {\n  client = existing[0];\n} else {\n  const created = $('Criar Cliente').item.json;\n  client = Array.isArray(created) ? created[0] : created;\n}\n\nconst cleanTenantPhone = (tenant.phone || '').replace(/\\D/g, '').slice(-9);\nconst cleanSenderPhone = (msg.sender_phone || '').replace(/\\D/g, '').slice(-9);\nconst isOwner = cleanTenantPhone === cleanSenderPhone;\n\nreturn [{\n  json: {\n    tenant,\n    client,\n    message_text: msg.message_text,\n    sender_phone: msg.sender_phone,\n    sender_phone_full: msg.sender_phone_full,\n    sender_name: msg.sender_name,\n    instance_name: msg.instance_name,\n    message_id: msg.message_id,\n    is_owner: isOwner\n  }\n}];"
+        "jsCode": "const tenant = $('Resolver Tenant').item.json.data;\nconst msg = $('Normalizar Payload').item.json;\n\nlet client;\nconst existing = $('Buscar Cliente').item.json;\nif (existing && existing.length > 0) {\n  client = existing[0];\n} else {\n  const created = $('Criar Cliente').item.json;\n  client = Array.isArray(created) ? created[0] : created;\n}\n\nconst cleanTenantPhone = (tenant.phone || '').replace(/\\D/g, '').slice(-9);\nconst cleanSenderPhone = (msg.sender_phone || '').replace(/\\D/g, '').slice(-9);\nconst isOwner = cleanTenantPhone === cleanSenderPhone;\n\nreturn [{\n  json: {\n    tenant,\n    client,\n    message_text: msg.message_text,\n    sender_phone: msg.sender_phone,\n    sender_phone_full: msg.sender_phone_full,\n    sender_name: msg.sender_name,\n    instance_name: msg.instance_name,\n    message_id: msg.message_id,\n    is_owner: isOwner\n  }\n}];"
       },
       "id": "merge-context",
       "name": "Montar Contexto",
@@ -220,6 +216,82 @@
     {
       "parameters": {
         "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenant_ai_config?tenant_id=eq.{{ $json.tenant.id }}&select=ai_globally_enabled&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-ai-config",
+      "name": "Carregar Config AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2840, 140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "global-ai-enabled",
+              "leftValue": "={{ $json[0]?.ai_globally_enabled ?? true }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-global-ai",
+      "name": "IA Global Ativada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3060, 140]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/conversations?id=eq.{{ $json.conversation_id }}&select=ai_enabled&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-conversation-ai",
+      "name": "Carregar Conversa AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3280, 140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "conversation-ai-enabled",
+              "leftValue": "={{ $json[0]?.ai_enabled ?? true }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-conversation-ai",
+      "name": "IA na Conversa Ativada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3500, 140]
+    },
+    {
+      "parameters": {
+        "method": "GET",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages?conversation_id=eq.{{ $json.conversation_id }}&select=role,content&order=created_at.desc&limit=10",
         "sendHeaders": true,
         "headerParameters": {
@@ -233,7 +305,7 @@
       "name": "Carregar Histórico",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2840, 260]
+      "position": [3720, 140]
     },
     {
       "parameters": {
@@ -377,8 +449,20 @@
     "Dono ou Cliente?": {
       "main": [
         [{ "node": "→ Fluxo Dono", "type": "main", "index": 0 }],
-        [{ "node": "→ Router Cliente", "type": "main", "index": 0 }]
+        [{ "node": "Carregar Config AI", "type": "main", "index": 0 }]
       ]
+    },
+    "Carregar Config AI": {
+      "main": [[{ "node": "IA Global Ativada?", "type": "main", "index": 0 }]]
+    },
+    "IA Global Ativada?": {
+      "main": [[{ "node": "Carregar Conversa AI", "type": "main", "index": 0 }], []]
+    },
+    "Carregar Conversa AI": {
+      "main": [[{ "node": "IA na Conversa Ativada?", "type": "main", "index": 0 }]]
+    },
+    "IA na Conversa Ativada?": {
+      "main": [[{ "node": "call-customer", "type": "main", "index": 0 }], []]
     }
   }
 }

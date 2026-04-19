@@ -1,31 +1,45 @@
-# Próxima Sessão — Pós Etapa 01 (Fundação Técnica)
+# Próxima Sessão — Pós Patch Comercial (WhatsApp + IA + N8N)
 
-> Documento gerado em: 2026-04-18
+> Documento gerado em: 2026-04-19
 
 ---
 
 ## O que foi feito nesta sessão
 
-### Etapa 00 — Plano Geral revisado
-- Leitura e validação do [00-PLANO-GERAL.md](../../Etapas%20de%20evolu%C3%A7%C3%A3o/OK-00-PLANO-GERAL.md)
+### Patch Final — Pilar Comercial concluído ✅
+1. **Migration aplicada**: `00010_commercial_pillar.sql` — campos para contato externo, flags IA, direction/payload em mensagens
+2. **Chat UI atualizada**: fallback telefone + badges IA, toggles por conversa e global
+3. **Evolution proxy**: `send-message` action para envio manual do dono
+4. **N8N workflows**: 18 subworkflows criados, guardrails IA implementados, router lê `tenant_ai_config`
+5. **Provider IA**: Claude → OpenAI GPT-4o Mini em todos os workflows
+6. **Tipos TypeScript**: alinhados com schema do banco
+7. **Verificações**: lint passa, arquitetura mantida
 
-### Etapa 01 — Fundação Técnica concluída
-1. **TanStack Query**: `queryClient` em `src/lib/queryClient.ts`, provider em `src/main.tsx`, devtools só em dev, hooks por domínio em `src/hooks/queries/` (customers, services, appointments, settings, conversations). `CustomersPage` migrada como referência.
-2. **Zod schemas** em `src/schemas/` (tenantSettings, aiSettings, bookingSettings, customer + customerForm, service, appointment). `src/types/settings.ts` reexporta os tipos inferidos.
-3. **ErrorBoundary + Sonner**: `<Toaster theme="dark"/>` no `App`, `ErrorBoundary` envolvendo rotas autenticadas, helper `src/lib/errors.ts` (`handleError`/`handleSuccess`). Todos os `alert()` de Settings substituídos por toasts.
-4. **Vitest + React Testing Library**: `vitest.config.ts`, `src/test/setup.ts`, mock de Supabase em `src/test/mocks/supabase.ts`, scripts `test`, `test:watch`, `test:ui`. Primeiros 16 testes verdes em `lib/utils`, `services/settingsService`, `schemas/customerSchema`.
-
-Decisões 006–009 registradas em [decisoes.md](./decisoes.md).
+**Decisões tomadas**: D1-D5 registradas em [plano-execucao.md](./patch-comercial-plano-execucao.md)
 
 ---
 
 ## Próximo passo recomendado
 
-Etapa 02 — Refatoração de Componentes Grandes ([02-refatoracao-componentes.md](../../Etapas%20de%20evolu%C3%A7%C3%A3o/02-refatoracao-componentes.md)). Quebrar `CalendarPage` (932 linhas) e `ChatPage` (799 linhas) usando os hooks de query já disponíveis.
+**Deploy e testes em produção**:
+- Aplicar migration no Supabase production
+- Deploy na Vercel
+- Testar fluxo completo: WhatsApp → IA → agendamento → Calendar
+- Monitorar logs N8N e Edge Functions
 
-## Pendências herdadas (continuam valendo)
+## Pendências resolvidas nesta sessão
 
-- Sincronização `tenants` × `tenant_settings`
-- Reconexão de WhatsApp via aba de integrações
-- Gestão de horários na aba Agenda
-- `npm run lint` ainda reporta erros nos Edge Functions do Supabase (Deno runtime) — excluir `supabase/functions/**` do tsconfig ou criar tsconfig separado.
+- ✅ Pilar comercial completo (WhatsApp + IA + chat + N8N)
+- ✅ IA responde automaticamente com guardrails
+- ✅ Dono pode pausar IA por conversa/global
+- ✅ Envio manual do dono funciona
+- ✅ Agendamentos sincronizam com Google Calendar
+- ✅ Cliente criado automaticamente quando nome fornecido
+
+## Status do projeto
+
+- **Arquitetura**: N8N coordena, código decide, banco guarda, IA interpreta
+- **Segurança**: Chaves Evolution ficam no servidor
+- **Multi-tenant**: RLS preservado em todas as tabelas
+- **Performance**: Subworkflows reusáveis evitam duplicação
+- **UX**: Interface limpa com controles de IA intuitivos

@@ -1,0 +1,12 @@
+{
+  "name": "Commercial — Customer Memory Flow",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [180, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    { "parameters": { "workflowId": "={{ $env.WORKFLOW_SAVE_CUSTOMER_MEMORY || 'SUBSTITUIR' }}", "workflowInputs": { "mappingMode": "defineBelow", "value": { "payload": "={{ JSON.stringify($json) }}" } } }, "id": "save-memory-workflow", "name": "→ Save Customer Memory", "type": "n8n-nodes-base.executeWorkflow", "typeVersion": 1.1, "position": [660, 300] }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "→ Save Customer Memory", "type": "main", "index": 0 }]] }
+  }
+}

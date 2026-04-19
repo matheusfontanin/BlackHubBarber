@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Conversation } from '@/services/chatService';
 import { Message } from '@/services/chatService';
 import { ROLE_CONFIG, STATUS_CONFIG, CHANNEL_ICON } from '../constants';
+import { getConversationDisplayName } from '../utils';
 import { AIReasoningPanel } from './AIReasoningPanel';
 
 interface MessageThreadProps {
@@ -15,6 +16,7 @@ interface MessageThreadProps {
   loading: boolean;
   onBack?: () => void;
   onToggleProfile?: () => void;
+  onToggleAI?: (enabled: boolean) => void;
   showProfile?: boolean;
 }
 
@@ -24,6 +26,7 @@ export function MessageThread({
   loading,
   onBack,
   onToggleProfile,
+  onToggleAI,
   showProfile,
 }: MessageThreadProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -52,6 +55,8 @@ export function MessageThread({
   });
 
   const client = selectedConv?.clients;
+  const displayName = selectedConv ? getConversationDisplayName(selectedConv) : '';
+  const contactPhone = selectedConv?.external_contact_phone ?? client?.phone ?? '';
 
   if (!selectedConv) {
     return (
@@ -83,23 +88,37 @@ export function MessageThread({
             </button>
           )}
           <div className="w-9 h-9 rounded-xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400 shrink-0">
-            {client?.name?.charAt(0).toUpperCase() ?? '?'}
+            {displayName.charAt(0).toUpperCase() ?? '?'}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <p className="text-sm font-semibold text-primary truncate">{client?.name}</p>
+              <p className="text-sm font-semibold text-primary truncate">{displayName}</p>
               <span className="text-[10px] shrink-0">{CHANNEL_ICON[selectedConv.channel].icon}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className={cn(
-                'text-[9px] font-bold uppercase tracking-wider',
-                STATUS_CONFIG[selectedConv.status].color,
+                'text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-1',
+                selectedConv.ai_enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400',
               )}>
-                {STATUS_CONFIG[selectedConv.status].label}
+                {selectedConv.ai_enabled ? 'IA ativa' : 'IA pausada'}
               </span>
-              <p className="text-[10px] text-faint font-mono truncate">{client?.phone}</p>
+              <span className="text-[10px] text-faint font-mono truncate">{contactPhone}</span>
             </div>
           </div>
+          {onToggleAI && (
+            <button
+              type="button"
+              onClick={() => onToggleAI(!selectedConv.ai_enabled)}
+              className={cn(
+                'shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+                selectedConv.ai_enabled
+                  ? 'border-emerald-400 text-emerald-400 hover:bg-emerald-500/10'
+                  : 'border-amber-400 text-amber-400 hover:bg-amber-500/10',
+              )}
+            >
+              {selectedConv.ai_enabled ? 'Pausar IA' : 'Ativar IA'}
+            </button>
+          )}
         </div>
 
         {onToggleProfile && (

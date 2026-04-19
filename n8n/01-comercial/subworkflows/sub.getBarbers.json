@@ -1,0 +1,36 @@
+{
+  "name": "Commercial — Get Barbers (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/barbers?tenant_id=eq.{{ $json.tenant_id }}&is_active=eq.true&select=id,name,specialties,google_calendar_id",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+          { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+        ] }
+      },
+      "id": "fetch-barbers",
+      "name": "Buscar Barbeiros",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": { "jsCode": "return [{ json: { ...$('Parse Payload').item.json, barbers: Array.isArray($('Buscar Barbeiros').item.json) ? $('Buscar Barbeiros').item.json : [] } }];" },
+      "id": "return-barbers",
+      "name": "Retornar Barbeiros",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Barbeiros", "type": "main", "index": 0 }]] },
+    "Buscar Barbeiros": { "main": [[{ "node": "Retornar Barbeiros", "type": "main", "index": 0 }]] }
+  }
+}

@@ -1,10 +1,11 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, MessageSquare, Search, Wifi, WifiOff } from 'lucide-react';
+import { Bot, BotOff, Loader2, MessageSquare, Search, Wifi, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Conversation, ConversationStatus, ConversationChannel } from '@/services/chatService';
 import { STATUS_CONFIG, CHANNEL_ICON } from '../constants';
+import { getConversationDisplayName, getConversationInitial } from '../utils';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -135,7 +136,7 @@ export function ConversationList({
                         'w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold',
                         'bg-blue-950/60 border border-blue-500/20 text-blue-400',
                       )}>
-                        {conv.clients?.name?.charAt(0).toUpperCase() ?? '?'}
+                        {getConversationInitial(conv)}
                       </div>
                       {/* Status dot */}
                       <div className={cn(
@@ -147,9 +148,15 @@ export function ConversationList({
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-semibold text-primary truncate">
-                            {conv.clients?.name ?? 'Desconhecido'}
+                            {getConversationDisplayName(conv)}
+                          </span>
+                          <span className={cn(
+                            'text-[9px] font-bold uppercase tracking-wider',
+                            conv.ai_enabled ? 'text-emerald-400' : 'text-amber-400',
+                          )}>
+                            {conv.ai_enabled ? 'IA ativa' : 'IA pausada'}
                           </span>
                           <span className="text-[10px]">{channelConf.icon}</span>
                         </div>

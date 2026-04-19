@@ -1,0 +1,61 @@
+{
+  "name": "Commercial — Sync Calendar Update (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments?id=eq.{{ $json.appointment_id }}&select=*,clients(name,phone,email),services(name),tenants(id,google_calendar_id,google_refresh_token,name)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-appointment",
+      "name": "Buscar Agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const appointment = $('Buscar Agendamento').item.json[0] || $('Buscar Agendamento').item.json;\nconst tenant = appointment?.tenants;\nif (!appointment || !tenant) throw new Error('Agendamento ou tenant não encontrado');\nif (!tenant.google_calendar_id || !tenant.google_refresh_token) return [{ json: { ok: false, error: 'Google Calendar não configurado para este tenant' } }];\nif (!appointment.google_calendar_event_id) return [{ json: { ok: false, error: 'Appointment não possui evento no Google Calendar' } }];\n\nconst refreshToken = tenant.google_refresh_token;\nconst body = new URLSearchParams({
+  grant_type: 'refresh_token',
+  refresh_token: refreshToken,
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
+}).toString();\nconst tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body,
+});\nconst tokenData = await tokenRes.json();\nif (!tokenData.access_token) throw new Error('Falha ao atualizar token do Google Calendar');\n\nconst updatedEvent = {
+  summary: `Atualização: ${appointment.services?.name || 'Serviço'} - ${appointment.clients?.name || 'Cliente'}`,
+  description: `Agendamento atualizado via IA para ${appointment.clients?.name || 'Cliente'}.`,
+  start: { dateTime: appointment.starts_at },
+  end: { dateTime: appointment.ends_at },
+};\nconst eventRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(tenant.google_calendar_id)}/events/${encodeURIComponent(appointment.google_calendar_event_id)}`, {
+  method: 'PATCH',
+  headers: {
+    Authorization: `Bearer ${tokenData.access_token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(updatedEvent),
+});\nconst eventData = await eventRes.json();\nif (!eventRes.ok) throw new Error(`Google Calendar update failed: ${eventData.error?.message || JSON.stringify(eventData)}`);\nreturn [{ json: { ok: true, event: eventData } }];"
+      },
+      "id": "update-event",
+      "name": "Atualizar evento no Google Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 260]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Agendamento", "type": "main", "index": 0 }]] },
+    "Buscar Agendamento": { "main": [[{ "node": "Atualizar evento no Google Calendar", "type": "main", "index": 0 }]] }
+  }
+}

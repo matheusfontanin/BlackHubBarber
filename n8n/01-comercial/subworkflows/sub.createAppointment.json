@@ -1,0 +1,14 @@
+{
+  "name": "Commercial — Create Appointment (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: { ...input, status: input.status || 'scheduled', source: input.source || 'ai' } }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    { "parameters": { "method": "POST", "url": "={{ $env.SUPABASE_URL }}/rest/v1/appointments", "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" }, { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }, { "name": "Content-Type", "value": "application/json" }, { "name": "Prefer", "value": "return=representation" } ] }, "sendBody": true, "bodyContentType": "json", "jsonBody": "={\n  \"tenant_id\": \"{{ $json.tenant_id }}\",\n  \"client_id\": \"{{ $json.client_id }}\",\n  \"barber_id\": {{ $json.barber_id ? JSON.stringify($json.barber_id) : 'null' }},\n  \"service_id\": \"{{ $json.service_id }}\",\n  \"starts_at\": \"{{ $json.starts_at }}\",\n  \"ends_at\": \"{{ $json.ends_at }}\",\n  \"status\": \"{{ $json.status }}\",\n  \"notes\": {{ JSON.stringify($json.notes || null) }},\n  \"source\": \"{{ $json.source }}\"\n}" }, "id": "create-appointment", "name": "Criar Agendamento", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [680, 300] },
+    { "parameters": { "workflowId": "={{ $env.WORKFLOW_SYNC_CALENDAR_CREATE || 'SUBSTITUIR' }}", "options": { "waitForSubWorkflow": true }, "workflowInputs": { "mappingMode": "defineBelow", "value": { "payload": "={{ JSON.stringify({ tenant_id: $json.tenant_id, appointment_id: $('Criar Agendamento').item.json[0]?.id || $('Criar Agendamento').item.json.id }) }}" } } }, "id": "sync-calendar-create", "name": "→ Sync Calendar Create", "type": "n8n-nodes-base.executeWorkflow", "typeVersion": 1.1, "position": [920, 300] }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Criar Agendamento", "type": "main", "index": 0 }]] },
+    "Criar Agendamento": { "main": [[{ "node": "→ Sync Calendar Create", "type": "main", "index": 0 }]] }
+  }
+}

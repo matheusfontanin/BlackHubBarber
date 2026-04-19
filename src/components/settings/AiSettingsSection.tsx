@@ -55,6 +55,7 @@ const DEFAULTS: FormValues = {
   can_suggest_services: true,
   can_negotiate_price: false,
   can_collect_feedback: true,
+  ai_globally_enabled: true,
   max_messages_before_escalation: 20,
   escalation_keywords: [],
   important_notes: '',
@@ -278,6 +279,7 @@ export default function AiSettingsSection() {
       <div className="space-y-3 pt-4 border-t border-primary/[0.06]">
         <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Poderes</h3>
         {([
+          { field: 'ai_globally_enabled' as const, label: 'IA global ativa' },
           { field: 'can_auto_schedule' as const, label: 'Pode criar agendamentos diretamente' },
           { field: 'must_confirm_before_booking' as const, label: 'Sempre confirmar antes de fechar' },
           { field: 'can_reply_outside_business_hours' as const, label: 'Pode responder fora do horário' },

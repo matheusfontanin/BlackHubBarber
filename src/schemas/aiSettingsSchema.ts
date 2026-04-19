@@ -19,6 +19,7 @@ export const aiSettingsSchema = z.object({
   can_auto_schedule: z.boolean(),
   must_confirm_before_booking: z.boolean(),
   can_reply_outside_business_hours: z.boolean(),
+  ai_globally_enabled: z.boolean().default(true),
   greeting_message: z.string().max(500).nullable(),
   out_of_hours_message: z.string().max(500).nullable(),
   updated_at: z.string().optional(),

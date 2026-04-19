@@ -1,0 +1,14 @@
+{
+  "name": "Commercial — Send WhatsApp (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: { ...input, to: input.to ?? input.sender_phone_full, text: input.text ?? input.reply_text } }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    { "parameters": { "method": "POST", "url": "={{ $env.SUPABASE_URL }}/rest/v1/messages", "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" }, { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }, { "name": "Content-Type", "value": "application/json" }, { "name": "Prefer", "value": "return=representation" } ] }, "sendBody": true, "bodyContentType": "json", "jsonBody": "={\n  \"conversation_id\": \"{{ $json.conversation_id }}\",\n  \"tenant_id\": \"{{ $json.tenant_id }}\",\n  \"role\": \"assistant\",\n  \"content\": {{ JSON.stringify($json.text || '') }},\n  \"direction\": \"outbound\",\n  \"delivery_status\": \"pending\"\n}" }, "id": "save-reply", "name": "Salvar Resposta", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [660, 300] },
+    { "parameters": { "method": "POST", "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.to_instance || $json.instance_name }}", "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }, { "name": "Content-Type", "value": "application/json" } ] }, "sendBody": true, "bodyContentType": "json", "jsonBody": "={\n  \"number\": \"{{ $json.to }}\",\n  \"text\": {{ JSON.stringify($json.text || '') }}\n}" }, "id": "send-whatsapp", "name": "Enviar WhatsApp", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [900, 300] }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Salvar Resposta", "type": "main", "index": 0 }]] },
+    "Salvar Resposta": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
+  }
+}

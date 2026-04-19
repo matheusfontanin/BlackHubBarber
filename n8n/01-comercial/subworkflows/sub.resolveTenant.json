@@ -1,0 +1,40 @@
+{
+  "name": "Commercial — Resolve Tenant (shared)",
+  "nodes": [
+    { "parameters": {}, "id": "trigger", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [200, 300] },
+    { "parameters": { "jsCode": "const input = JSON.parse($input.first().json.payload);\nreturn [{ json: input }];" }, "id": "parse", "name": "Parse Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [420, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenants?whatsapp_instance=eq.{{ $json.instance_name }}&select=id,name,phone,owner_name,opening_hours,whatsapp_instance,google_calendar_id&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-tenant",
+      "name": "Buscar Tenant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tenant = Array.isArray($('Buscar Tenant').item.json) && $('Buscar Tenant').item.json.length > 0 ? $('Buscar Tenant').item.json[0] : null;\nreturn [{ json: { ...$json, tenant } }];"
+      },
+      "id": "return-tenant",
+      "name": "Retornar Tenant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Payload", "type": "main", "index": 0 }]] },
+    "Parse Payload": { "main": [[{ "node": "Buscar Tenant", "type": "main", "index": 0 }]] },
+    "Buscar Tenant": { "main": [[{ "node": "Retornar Tenant", "type": "main", "index": 0 }]] }
+  }
+}

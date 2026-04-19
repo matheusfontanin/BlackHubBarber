@@ -9,14 +9,20 @@ export type ConversationStatus = 'active' | 'open' | 'ai_handling' | 'closed' | 
 export type ConversationChannel = 'whatsapp' | 'instagram';
 export type MessageRole = 'client' | 'user' | 'ai' | 'assistant' | 'owner' | 'system';
 
+export type MessageDirection = 'inbound' | 'outbound';
+export type MessageDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+
 export interface Conversation {
   id: string;
   tenant_id: string;
-  client_id: string;
+  client_id: string | null;
   channel: ConversationChannel;
   status: ConversationStatus;
   last_message_at: string;
   created_at: string;
+  external_contact_phone?: string | null;
+  external_contact_name?: string | null;
+  ai_enabled: boolean;
   clients?: {
     id: string;
     name: string;
@@ -44,6 +50,9 @@ export interface Message {
   metadata?: Record<string, unknown>;
   is_read: boolean;
   created_at: string;
+  direction?: MessageDirection;
+  delivery_status?: MessageDeliveryStatus;
+  raw_payload?: Record<string, unknown> | null;
 }
 
 export interface CustomerMemory {
@@ -187,30 +196,72 @@ export const chatService = {
   /* ── Send owner message ── */
 
   async sendOwnerMessage(
-    conversationId: string,
-    tenantId: string,
+    conversation: Conversation,
     content: string,
   ): Promise<Message> {
-    const { data, error } = await supabase
+    const to = conversation.external_contact_phone ?? conversation.clients?.phone;
+    if (!to) {
+      throw new Error('Telefone de contato não encontrado para enviar a mensagem.');
+    }
+
+    const { data: insertedMessage, error: insertError } = await supabase
       .from('messages')
       .insert({
-        conversation_id: conversationId,
-        tenant_id: tenantId,
+        conversation_id: conversation.id,
+        tenant_id: conversation.tenant_id,
         role: 'owner',
         content,
+        direction: 'outbound',
+        delivery_status: 'pending',
         is_read: true,
       })
       .select()
       .single();
-    if (error) throw error;
 
-    // Update conversation last_message_at
+    if (insertError) throw insertError;
+
     await supabase
       .from('conversations')
       .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversationId);
+      .eq('id', conversation.id);
 
-    return data as Message;
+    try {
+      const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+        body: {
+          action: 'send-message',
+          tenant_id: conversation.tenant_id,
+          conversation_id: conversation.id,
+          message_id: insertedMessage.id,
+          to,
+          text: content,
+        },
+      });
+
+      if (error || !(data as any)?.ok) {
+        await supabase
+          .from('messages')
+          .update({ delivery_status: 'failed' })
+          .eq('id', insertedMessage.id);
+
+        throw error ?? new Error((data as any)?.error ?? 'Falha ao enviar mensagem pelo Evolution');
+      }
+    } catch (err) {
+      await supabase
+        .from('messages')
+        .update({ delivery_status: 'failed' })
+        .eq('id', insertedMessage.id);
+      throw err;
+    }
+
+    return insertedMessage as Message;
+  },
+
+  async toggleConversationAI(conversationId: string, enabled: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ ai_enabled: enabled })
+      .eq('id', conversationId);
+    if (error) throw error;
   },
 
   /* ── Customer memories ── */
