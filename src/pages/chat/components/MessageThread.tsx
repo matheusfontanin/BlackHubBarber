@@ -1,12 +1,13 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { format, parseISO, isToday, isYesterday, isSameDay } from 'date-fns';
+import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, Bot, MessageSquare, ChevronLeft, Eye } from 'lucide-react';
+import { Loader2, Bot, MessageSquare, ChevronLeft, Eye, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Conversation } from '@/services/chatService';
 import { Message } from '@/services/chatService';
 import { ROLE_CONFIG, STATUS_CONFIG, CHANNEL_ICON } from '../constants';
+import { AIReasoningPanel } from './AIReasoningPanel';
 
 interface MessageThreadProps {
   selectedConv: Conversation | null;
@@ -26,6 +27,7 @@ export function MessageThread({
   showProfile,
 }: MessageThreadProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [reasoningMessageId, setReasoningMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -145,6 +147,10 @@ export function MessageThread({
                   const roleConf = ROLE_CONFIG[msg.role] ?? ROLE_CONFIG.client;
                   const isRight = msg.role === 'ai' || msg.role === 'assistant' || msg.role === 'owner';
                   const isSystem = msg.role === 'system';
+                  const isAI = msg.role === 'ai' || msg.role === 'assistant';
+                  const toolCalls = Array.isArray((msg.metadata as { tool_calls?: unknown[] } | undefined)?.tool_calls)
+                    ? ((msg.metadata as { tool_calls?: unknown[] }).tool_calls as unknown[])
+                    : null;
 
                   if (isSystem) {
                     return (
@@ -181,6 +187,11 @@ export function MessageThread({
                           <span className={cn('text-[9px] font-bold uppercase tracking-wider', roleConf.color)}>
                             {roleConf.label}
                           </span>
+                          {toolCalls && toolCalls.length > 0 && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-gold bg-gold/10 border border-gold/25 rounded-full px-1.5 py-0.5">
+                              🔧 {toolCalls.length === 1 ? 'ferramenta' : `${toolCalls.length} ferramentas`}
+                            </span>
+                          )}
                         </div>
 
                         {/* Bubble */}
@@ -188,10 +199,22 @@ export function MessageThread({
                           <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
                         </div>
 
-                        {/* Timestamp */}
-                        <span className="text-[9px] font-mono text-faint mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {format(parseISO(msg.created_at), 'HH:mm')}
-                        </span>
+                        {/* Timestamp + AI reasoning trigger */}
+                        <div className={cn('flex items-center gap-1.5 mt-1', isRight && 'flex-row-reverse')}>
+                          <span className="text-[9px] font-mono text-faint opacity-0 group-hover:opacity-100 transition-opacity">
+                            {format(parseISO(msg.created_at), 'HH:mm')}
+                          </span>
+                          {isAI && (
+                            <button
+                              type="button"
+                              onClick={() => setReasoningMessageId(msg.id)}
+                              title="Ver raciocínio da IA"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md text-gold/70 hover:text-gold hover:bg-gold/10"
+                            >
+                              <Sparkles size={11} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );
@@ -202,6 +225,11 @@ export function MessageThread({
           </div>
         )}
       </div>
+
+      <AIReasoningPanel
+        messageId={reasoningMessageId}
+        onClose={() => setReasoningMessageId(null)}
+      />
     </div>
   );
 }

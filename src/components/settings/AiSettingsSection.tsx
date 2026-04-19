@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check, Loader2, Bot, Sparkles } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useTenant } from '@/hooks/useTenant';
-import { getAISettings, upsertAISettings } from '@/services/settingsService';
-import type { TenantAISettings, ToneOfVoice, ServiceStyle } from '@/types/settings';
+import { supabase } from '@/lib/supabase/client';
 import { handleError, handleSuccess } from '@/lib/errors';
+import { tenantAIConfigSchema } from '@/schemas/tenantAIConfigSchema';
+import { PromptPreview } from './PromptPreview';
+
+const formSchema = tenantAIConfigSchema.omit({ tenant_id: true, updated_at: true });
+type FormValues = z.input<typeof formSchema>;
 
 const INPUT_CLS = "w-full px-4 py-3 bg-bg border border-primary/8 rounded-xl outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all text-sm font-medium";
 const LABEL_CLS = "text-[10px] font-bold text-primary/40 uppercase tracking-wider block mb-2";
@@ -14,55 +21,118 @@ const TOGGLE_CLS = (active: boolean) =>
 const TOGGLE_DOT = (active: boolean) =>
   `inline-block h-4 w-4 rounded-full bg-white transition-transform shadow-sm ${active ? 'translate-x-6' : 'translate-x-1'}`;
 
-const TONE_OPTIONS: { value: ToneOfVoice; label: string; desc: string }[] = [
+const TONE_OPTIONS = [
   { value: 'profissional', label: 'Profissional', desc: 'Formal e direto, passa confiança' },
-  { value: 'descontraído', label: 'Descontraído', desc: 'Informal e amigável, cria proximidade' },
-  { value: 'premium', label: 'Premium', desc: 'Elegante e sofisticado, experiência exclusiva' },
-];
+  { value: 'descontraido', label: 'Descontraído', desc: 'Informal e amigável, cria proximidade' },
+  { value: 'premium', label: 'Premium', desc: 'Elegante e sofisticado' },
+  { value: 'amigo', label: 'Amigo', desc: 'Próximo e acolhedor' },
+] as const;
 
-const STYLE_OPTIONS: { value: ServiceStyle; label: string; desc: string }[] = [
-  { value: 'direto', label: 'Direto', desc: 'Vai direto ao ponto sem rodeios' },
+const STYLE_OPTIONS = [
+  { value: 'direto', label: 'Direto', desc: 'Vai direto ao ponto' },
   { value: 'consultivo', label: 'Consultivo', desc: 'Pergunta e sugere antes de decidir' },
-  { value: 'acolhedor', label: 'Acolhedor', desc: 'Empático e atencioso em cada interação' },
-];
+  { value: 'acolhedor', label: 'Acolhedor', desc: 'Empático e atencioso' },
+] as const;
+
+const GENDER_OPTIONS = [
+  { value: 'masculino', label: 'Masculino' },
+  { value: 'feminino', label: 'Feminino' },
+  { value: 'neutro', label: 'Neutro' },
+] as const;
+
+const DEFAULTS: FormValues = {
+  assistant_name: 'Assistente',
+  assistant_avatar_url: '',
+  assistant_gender: 'neutro',
+  tone_of_voice: 'profissional',
+  service_style: 'direto',
+  formality_level: 3,
+  uses_emojis: true,
+  uses_slang: false,
+  can_auto_schedule: false,
+  must_confirm_before_booking: true,
+  can_reply_outside_business_hours: false,
+  can_suggest_services: true,
+  can_negotiate_price: false,
+  can_collect_feedback: true,
+  max_messages_before_escalation: 20,
+  escalation_keywords: [],
+  important_notes: '',
+  forbidden_topics: [],
+  signature_services: '',
+  upsell_guidelines: '',
+  greeting_message: '',
+  out_of_hours_message: '',
+  booking_confirmation_template: '',
+  booking_reminder_template: '',
+  cancellation_message_template: '',
+  post_service_thankyou: '',
+};
+
+function parseListInput(value: string): string[] {
+  return value
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
 
 export default function AiSettingsSection() {
   const { tenantId } = useTenant();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState<Partial<TenantAISettings>>({
-    assistant_name: 'Assistente',
-    tone_of_voice: 'profissional',
-    service_style: 'direto',
-    can_auto_schedule: false,
-    must_confirm_before_booking: true,
-    can_reply_outside_business_hours: false,
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: DEFAULTS,
   });
 
+  const values = watch();
+
   useEffect(() => {
-    if (tenantId) loadData();
-  }, [tenantId]);
+    if (!tenantId) return;
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const data = await getAISettings(tenantId!);
-      if (data) setForm(data);
-    } catch (err) {
-      handleError(err, 'Não foi possível carregar as configurações da IA');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('tenant_ai_config')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+        if (error) throw error;
+        if (data) reset({ ...DEFAULTS, ...data });
+      } catch (err) {
+        handleError(err, 'Não foi possível carregar as configurações da IA');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [tenantId, reset]);
+
+  const onSubmit = async (formValues: FormValues) => {
     if (!tenantId) return;
     setSaving(true);
     setSaved(false);
     try {
-      await upsertAISettings({ ...form, tenant_id: tenantId } as TenantAISettings);
+      const { error } = await supabase
+        .from('tenant_ai_config')
+        .upsert(
+          { ...formValues, tenant_id: tenantId, updated_at: new Date().toISOString() },
+          { onConflict: 'tenant_id' },
+        );
+
+      if (error) throw error;
       setSaved(true);
       handleSuccess('Configurações da IA salvas');
       setTimeout(() => setSaved(false), 3000);
@@ -73,49 +143,82 @@ export default function AiSettingsSection() {
     }
   };
 
-  const toggleField = (field: 'can_auto_schedule' | 'must_confirm_before_booking' | 'can_reply_outside_business_hours') => {
-    setForm(prev => ({ ...prev, [field]: !prev[field] }));
-  };
-
   if (loading) {
-    return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-secondary" size={32} /></div>;
+    return (
+      <div className="flex justify-center p-12">
+        <Loader2 className="animate-spin text-secondary" size={32} />
+      </div>
+    );
   }
 
+  const toggle = (field: keyof FormValues) => {
+    setValue(field as any, !values[field], { shouldDirty: true });
+  };
+
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="border-b border-primary/[0.06] pb-4 flex items-center gap-3">
         <div className="w-9 h-9 bg-secondary/15 rounded-xl flex items-center justify-center">
           <Bot size={18} className="text-secondary" />
         </div>
         <div>
           <h2 className="text-lg font-heading font-medium tracking-tight text-primary">Configurações da IA</h2>
-          <p className="text-[10px] text-primary/35 uppercase tracking-wider font-bold">Personalidade e comportamento do assistente</p>
         </div>
       </div>
 
-      {/* Identity */}
+      {/* Identidade do Assistente */}
       <div className="space-y-4">
-        <div>
-          <label className={LABEL_CLS}>Nome do Assistente</label>
-          <input
-            type="text"
-            value={form.assistant_name ?? ''}
-            onChange={e => setForm(prev => ({ ...prev, assistant_name: e.target.value }))}
-            className={INPUT_CLS}
-            placeholder="Ex: Luna, Max, BlackBot..."
-          />
+        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Identidade do assistente</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLS}>Nome do assistente *</label>
+            <input {...register('assistant_name')} className={INPUT_CLS} placeholder="Ex: Luna, Max, BlackBot" />
+            {errors.assistant_name && <p className="text-red-500 text-xs mt-1">{errors.assistant_name.message}</p>}
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Avatar (URL)</label>
+            <input {...register('assistant_avatar_url')} className={INPUT_CLS} />
+          </div>
         </div>
-
-        {/* Tone of Voice */}
         <div>
-          <label className={LABEL_CLS}>Tom de Voz</label>
+          <label className={LABEL_CLS}>Gênero</label>
           <div className="grid grid-cols-3 gap-3">
+            {GENDER_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setValue('assistant_gender', opt.value, { shouldDirty: true })}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  values.assistant_gender === opt.value
+                    ? 'border-secondary bg-secondary/5 shadow-sm'
+                    : 'border-primary/[0.06] bg-bg/60 hover:border-primary/10'
+                }`}
+              >
+                <p className="text-sm font-semibold text-primary">{opt.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Personalidade */}
+      <div className="space-y-4 pt-4 border-t border-primary/[0.06]">
+        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles size={12} /> Personalidade
+        </h3>
+        <div>
+          <label className={LABEL_CLS}>Tom de voz</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {TONE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setForm(prev => ({ ...prev, tone_of_voice: opt.value }))}
-                className={`p-3 rounded-xl border text-left transition-all ${form.tone_of_voice === opt.value ? 'border-secondary bg-secondary/5 shadow-sm' : 'border-primary/[0.06] bg-bg/60 hover:border-primary/10'}`}
+                onClick={() => setValue('tone_of_voice', opt.value, { shouldDirty: true })}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  values.tone_of_voice === opt.value
+                    ? 'border-secondary bg-secondary/5 shadow-sm'
+                    : 'border-primary/[0.06] bg-bg/60 hover:border-primary/10'
+                }`}
               >
                 <p className="text-sm font-semibold text-primary">{opt.label}</p>
                 <p className="text-[10px] text-primary/35 mt-0.5">{opt.desc}</p>
@@ -124,16 +227,19 @@ export default function AiSettingsSection() {
           </div>
         </div>
 
-        {/* Service Style */}
         <div>
-          <label className={LABEL_CLS}>Estilo de Atendimento</label>
+          <label className={LABEL_CLS}>Estilo de atendimento</label>
           <div className="grid grid-cols-3 gap-3">
             {STYLE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setForm(prev => ({ ...prev, service_style: opt.value }))}
-                className={`p-3 rounded-xl border text-left transition-all ${form.service_style === opt.value ? 'border-secondary bg-secondary/5 shadow-sm' : 'border-primary/[0.06] bg-bg/60 hover:border-primary/10'}`}
+                onClick={() => setValue('service_style', opt.value, { shouldDirty: true })}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  values.service_style === opt.value
+                    ? 'border-secondary bg-secondary/5 shadow-sm'
+                    : 'border-primary/[0.06] bg-bg/60 hover:border-primary/10'
+                }`}
               >
                 <p className="text-sm font-semibold text-primary">{opt.label}</p>
                 <p className="text-[10px] text-primary/35 mt-0.5">{opt.desc}</p>
@@ -141,67 +247,139 @@ export default function AiSettingsSection() {
             ))}
           </div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className={LABEL_CLS}>Formalidade (1-5)</label>
+            <input
+              type="number"
+              min={1}
+              max={5}
+              {...register('formality_level', { valueAsNumber: true })}
+              className={INPUT_CLS}
+            />
+          </div>
+          <div className="flex items-center justify-between p-4 bg-bg/60 rounded-xl border border-primary/[0.06]">
+            <p className="text-sm font-semibold text-primary">Usar emojis</p>
+            <button type="button" onClick={() => toggle('uses_emojis')} className={TOGGLE_CLS(values.uses_emojis ?? true)}>
+              <span className={TOGGLE_DOT(values.uses_emojis ?? true)} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-bg/60 rounded-xl border border-primary/[0.06]">
+            <p className="text-sm font-semibold text-primary">Usar gírias</p>
+            <button type="button" onClick={() => toggle('uses_slang')} className={TOGGLE_CLS(values.uses_slang ?? false)}>
+              <span className={TOGGLE_DOT(values.uses_slang ?? false)} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Context */}
-      <div className="space-y-4 pt-4 border-t border-primary/[0.06]">
-        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider flex items-center gap-1.5">
-          <Sparkles size={12} /> Contexto para a IA
-        </h3>
-        <div>
-          <label className={LABEL_CLS}>Descrição da Barbearia</label>
-          <textarea value={form.business_summary ?? ''} onChange={e => setForm(prev => ({ ...prev, business_summary: e.target.value }))} className={TEXTAREA_CLS} rows={2} placeholder="Descreva sua barbearia para a IA saber como apresentá-la aos clientes" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className={LABEL_CLS}>Público-Alvo / Perfil do Cliente</label>
-            <input type="text" value={form.customer_profile ?? ''} onChange={e => setForm(prev => ({ ...prev, customer_profile: e.target.value }))} className={INPUT_CLS} placeholder="Jovens, executivos..." />
-          </div>
-          <div>
-            <label className={LABEL_CLS}>Diferenciais</label>
-            <input type="text" value={form.differentiators ?? ''} onChange={e => setForm(prev => ({ ...prev, differentiators: e.target.value }))} className={INPUT_CLS} placeholder="Ambiente climatizado, cerveja..." />
-          </div>
-        </div>
-        <div>
-          <label className={LABEL_CLS}>Observações Importantes para Atendimento</label>
-          <textarea value={form.important_notes ?? ''} onChange={e => setForm(prev => ({ ...prev, important_notes: e.target.value }))} className={TEXTAREA_CLS} rows={2} placeholder="Informações que a IA deve sempre considerar" />
-        </div>
-      </div>
-
-      {/* Toggles */}
+      {/* Poderes */}
       <div className="space-y-3 pt-4 border-t border-primary/[0.06]">
-        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Comportamento</h3>
+        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Poderes</h3>
         {([
-          { field: 'can_auto_schedule' as const, label: 'IA pode agendar automaticamente?', desc: 'A IA cria agendamentos sem intervenção humana' },
-          { field: 'must_confirm_before_booking' as const, label: 'Sempre confirmar antes de fechar?', desc: 'A IA confirma horários com o cliente antes de finalizar' },
-          { field: 'can_reply_outside_business_hours' as const, label: 'Responder fora do horário?', desc: 'A IA pode responder mensagens fora do expediente' },
+          { field: 'can_auto_schedule' as const, label: 'Pode criar agendamentos diretamente' },
+          { field: 'must_confirm_before_booking' as const, label: 'Sempre confirmar antes de fechar' },
+          { field: 'can_reply_outside_business_hours' as const, label: 'Pode responder fora do horário' },
+          { field: 'can_suggest_services' as const, label: 'Pode sugerir serviços' },
+          { field: 'can_negotiate_price' as const, label: 'Pode negociar preço' },
+          { field: 'can_collect_feedback' as const, label: 'Pode pedir feedback após atendimento' },
         ]).map(item => (
           <div key={item.field} className="flex items-center justify-between p-4 bg-bg/60 rounded-xl border border-primary/[0.06]">
-            <div>
-              <p className="text-sm font-semibold text-primary">{item.label}</p>
-              <p className="text-[10px] text-primary/35">{item.desc}</p>
-            </div>
-            <button type="button" onClick={() => toggleField(item.field)} className={TOGGLE_CLS(form[item.field] ?? false)}>
-              <span className={TOGGLE_DOT(form[item.field] ?? false)} />
+            <p className="text-sm font-semibold text-primary">{item.label}</p>
+            <button type="button" onClick={() => toggle(item.field)} className={TOGGLE_CLS((values[item.field] as boolean) ?? false)}>
+              <span className={TOGGLE_DOT((values[item.field] as boolean) ?? false)} />
             </button>
           </div>
         ))}
       </div>
 
-      {/* Messages */}
+      {/* Guardrails */}
       <div className="space-y-4 pt-4 border-t border-primary/[0.06]">
-        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Mensagens Padrão</h3>
-        <div>
-          <label className={LABEL_CLS}>Mensagem de Saudação</label>
-          <textarea value={form.greeting_message ?? ''} onChange={e => setForm(prev => ({ ...prev, greeting_message: e.target.value }))} className={TEXTAREA_CLS} rows={2} placeholder="Olá! Sou o assistente da {barbearia}. Como posso te ajudar?" />
+        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Guardrails</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLS}>Tópicos proibidos</label>
+            <input
+              type="text"
+              defaultValue={(values.forbidden_topics ?? []).join(', ')}
+              onBlur={e => setValue('forbidden_topics', parseListInput(e.target.value), { shouldDirty: true })}
+              className={INPUT_CLS}
+              placeholder="política, religião"
+            />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Palavras que escalam para humano</label>
+            <input
+              type="text"
+              defaultValue={(values.escalation_keywords ?? []).join(', ')}
+              onBlur={e => setValue('escalation_keywords', parseListInput(e.target.value), { shouldDirty: true })}
+              className={INPUT_CLS}
+              placeholder="reclamação, gerente"
+            />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Máximo de mensagens antes de escalar</label>
+            <input
+              type="number"
+              min={1}
+              {...register('max_messages_before_escalation', { valueAsNumber: true })}
+              className={INPUT_CLS}
+            />
+          </div>
         </div>
         <div>
-          <label className={LABEL_CLS}>Mensagem Fora do Horário</label>
-          <textarea value={form.out_of_hours_message ?? ''} onChange={e => setForm(prev => ({ ...prev, out_of_hours_message: e.target.value }))} className={TEXTAREA_CLS} rows={2} placeholder="Estamos fechados no momento. Nosso horário é de segunda a sábado, das 9h às 20h." />
+          <label className={LABEL_CLS}>Observações importantes</label>
+          <textarea rows={3} {...register('important_notes')} className={TEXTAREA_CLS} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLS}>Serviços em destaque</label>
+            <textarea rows={2} {...register('signature_services')} className={TEXTAREA_CLS} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Orientação de upsell</label>
+            <textarea rows={2} {...register('upsell_guidelines')} className={TEXTAREA_CLS} />
+          </div>
         </div>
       </div>
 
-      {/* Save */}
+      {/* Mensagens padrão */}
+      <div className="space-y-4 pt-4 border-t border-primary/[0.06]">
+        <h3 className="text-xs font-bold text-primary/40 uppercase tracking-wider">Mensagens padrão</h3>
+        <div>
+          <label className={LABEL_CLS}>Saudação</label>
+          <textarea rows={2} {...register('greeting_message')} className={TEXTAREA_CLS} placeholder="Olá! Sou o assistente da {barbearia}. Como posso te ajudar?" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Fora do horário</label>
+          <textarea rows={2} {...register('out_of_hours_message')} className={TEXTAREA_CLS} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLS}>Confirmação de agendamento</label>
+            <textarea rows={2} {...register('booking_confirmation_template')} className={TEXTAREA_CLS} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Lembrete</label>
+            <textarea rows={2} {...register('booking_reminder_template')} className={TEXTAREA_CLS} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Cancelamento</label>
+            <textarea rows={2} {...register('cancellation_message_template')} className={TEXTAREA_CLS} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>Agradecimento pós-atendimento</label>
+            <textarea rows={2} {...register('post_service_thankyou')} className={TEXTAREA_CLS} />
+          </div>
+        </div>
+      </div>
+
+      {/* Prompt Preview */}
+      <div className="pt-4 border-t border-primary/[0.06]">
+        <PromptPreview />
+      </div>
+
       <div className="pt-4 border-t border-primary/[0.06]">
         <button type="submit" disabled={saving} className="btn-gold flex items-center justify-center gap-2">
           {saving ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}

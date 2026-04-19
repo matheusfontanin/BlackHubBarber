@@ -183,4 +183,4 @@ export interface Barber {
 }
 
 // ─── Settings Tab Types ──────────────────────────────────────
-export type SettingsTab = 'barbershop' | 'team' | 'booking' | 'ai' | 'integrations';
+export type SettingsTab = 'barbershop' | 'team' | 'booking' | 'ai' | 'diagnostics' | 'integrations';

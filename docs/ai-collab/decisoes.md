@@ -79,3 +79,44 @@
 - Mock de Supabase reutilizavel em `src/test/mocks/supabase.ts` (query builder chainable)
 - Primeiros testes: `lib/utils.test.ts`, `services/settingsService.test.ts`, `schemas/customerSchema.test.ts` (16 testes verdes)
 - Scripts `test`, `test:watch`, `test:ui` adicionados ao `package.json`
+
+## Decisao 010
+**Data:** 2026-04-18
+**Tema:** configuracoes-unificadas
+**Decisao:** Consolidar `tenant_settings`, `tenant_ai_settings` e `tenant_booking_settings` em tres tabelas por eixo semantico: `tenant_business_profile` (negocio), `tenant_ai_config` (comportamento do agente) e `tenant_booking_rules` (regras da agenda, sem sobreposicao com IA)
+**Motivo:** Remover os 5 campos duplicados auditados (differentiators, customer_profile/target_audience, business_summary/description, allow_ai_booking, require_manual_confirmation/must_confirm_before_booking) para ter fonte unica de verdade e eliminar risco de divergencia no prompt do agente
+**Impacto:**
+- Migration `00006_unified_settings.sql` cria as 3 tabelas com RLS por `tenant_id`, triggers `updated_at` e copia dos dados antigos
+- Schemas Zod em `src/schemas/tenantBusinessProfileSchema.ts`, `tenantAIConfigSchema.ts`, `tenantBookingRulesSchema.ts`
+- Formularios reescritos (`BarbershopSettingsSection`, `AiSettingsSection`, `BookingSettingsSection`) usando RHF + zodResolver diretamente nas tabelas novas
+- Componentes `OpeningHoursEditor` e `AmenitiesPicker` criados
+- `buildSystemPrompt` em `src/lib/ai/promptBuilder.ts` com 11 testes unitarios
+- `PromptPreview` incluido na aba IA
+- Edge Function `build-prompt` auto-suficiente (sem importar de `src/`)
+- Tabelas antigas marcadas como DEPRECATED, removidas em release futuro (2026-05)
+
+## Decisao 011
+**Data:** 2026-04-18
+**Tema:** integracao n8n / evolution
+**Decisao:** O webhook `n8n-webhook` normaliza payloads da Evolution para o schema interno (`clients` por telefone, `conversations` por canal, `messages` com metadata estruturada) e encaminha o payload original para o N8N de forma assincrona
+**Motivo:** Isolar o N8N do schema interno — mudancas de tabela ficam contidas na Edge Function — e garantir que o insert em `messages` nao depende do sucesso do forward
+**Impacto:**
+- `messages` ganhou coluna `delivery_status` e `conversations` ganhou `unread_count` (migration `00008_messages_lifecycle.sql`)
+- Trigger `sync_conversation_on_message` atualiza `last_message_at` / `unread_count` a cada mensagem nova
+- Trigger `reset_unread_on_read` zera `unread_count` quando as mensagens sao marcadas como lidas
+- `evolution-connect` agora valida o JWT do usuario via `auth.getUser()` e checa `tenant_members` com service role
+
+## Decisao 012
+**Data:** 2026-04-19
+**Tema:** observabilidade / IA
+**Decisao:** Criar tabela `ai_decision_logs` como fonte unica de auditoria de cada turno da IA (prompt, tools, custo, latencia, outcome) e expor via Edge Function `ai-log` para escrita pelo N8N, RPC `get_ai_health` para leitura agregada e painel `AIReasoningPanel` por mensagem
+**Motivo:** Sem o snapshot do prompt + tool calls + metricas, e impossivel debugar reclamacoes do tipo "a IA marcou errado" ou rastrear custo/latencia por periodo. Centralizar em uma tabela unica evita divergencia entre logs de N8N e o historico de mensagens no Supabase.
+**Impacto:**
+- Migration `00009_ai_decision_logs.sql` cria a tabela com RLS por `tenant_id` + bypass dev e a funcao `get_ai_health(tenant_id, period_days)` retornando JSON agregado
+- Edge Function `ai-log` aceita Bearer service-role ou header `x-ai-log-secret` e valida payload antes de inserir
+- Schemas Zod em `src/schemas/aiDecisionLogSchema.ts` (log + health) com 8 testes verdes
+- Hooks `useAIDecisionForMessage`, `useAIDecisionsForConversation`, `useAIHealth` em `src/hooks/queries/useAiLogs.ts`
+- Componente `AIReasoningPanel` abre drawer no `MessageThread` ao clicar na bolha da IA, mostra prompt ativo, tools, custo e latencia + botao "Copiar relatorio"
+- Badge de tools (`🔧 N ferramentas`) aparece na bolha da IA quando ha `tool_calls` no `metadata`
+- Tab "Diagnostico" em Settings renderiza `AIHealthDashboard` com KPIs, grafico de custo por dia, ranking de tools e alertas (erro >10%, latencia p95 >10s)
+- Contrato N8N documentado em `docs/n8n/ai-log-contract.md`

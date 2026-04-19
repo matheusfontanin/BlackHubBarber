@@ -7,3 +7,4 @@ export * from './tenantBookingRulesSchema';
 export * from './customerSchema';
 export * from './serviceSchema';
 export * from './appointmentSchema';
+export * from './aiDecisionLogSchema';

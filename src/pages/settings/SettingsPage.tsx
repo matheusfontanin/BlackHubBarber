@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Building, Users, CalendarClock, Bot, Link as LinkIcon } from 'lucide-react';
+import { Building, Users, CalendarClock, Bot, Link as LinkIcon, Activity } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
 import { cn } from '@/lib/utils';
 import { BarbershopSettingsSection } from '@/components/settings/BarbershopSettingsSection';
@@ -8,6 +8,7 @@ import TeamSettingsSection from '@/components/settings/TeamSettingsSection';
 import BookingSettingsSection from '@/components/settings/BookingSettingsSection';
 import AiSettingsSection from '@/components/settings/AiSettingsSection';
 import IntegrationsSettingsSection from '@/components/settings/IntegrationsSettingsSection';
+import AIHealthDashboard from '@/components/settings/AIHealthDashboard';
 import type { SettingsTab } from '@/types/settings';
 
 const TABS: { key: SettingsTab; label: string; icon: React.ElementType; desc: string }[] = [
@@ -15,6 +16,7 @@ const TABS: { key: SettingsTab; label: string; icon: React.ElementType; desc: st
   { key: 'team', label: 'Equipe', icon: Users, desc: 'Barbeiros e funções' },
   { key: 'booking', label: 'Agenda', icon: CalendarClock, desc: 'Regras de agendamento' },
   { key: 'ai', label: 'IA', icon: Bot, desc: 'Personalidade e contexto' },
+  { key: 'diagnostics', label: 'Diagnóstico', icon: Activity, desc: 'Saúde do agente' },
   { key: 'integrations', label: 'Integrações', icon: LinkIcon, desc: 'WhatsApp, Calendar, N8N' },
 ];
 
@@ -100,6 +102,7 @@ export default function SettingsPage() {
             {activeTab === 'team' && <TeamSettingsSection />}
             {activeTab === 'booking' && <BookingSettingsSection />}
             {activeTab === 'ai' && <AiSettingsSection />}
+            {activeTab === 'diagnostics' && <AIHealthDashboard />}
             {activeTab === 'integrations' && <IntegrationsSettingsSection />}
           </motion.div>
         </div>
