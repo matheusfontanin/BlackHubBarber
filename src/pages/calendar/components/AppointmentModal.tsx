@@ -133,42 +133,35 @@ export function AppointmentModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 bg-[#12100D]/40 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            className="bg-bg border-t sm:border border-border2 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-[0_16px_60px_rgba(0,0,0,0.6)] overflow-hidden max-h-[92vh] flex flex-col"
+            exit={{ opacity: 0, y: 20, scale: 0.98 }}
+            className="bg-surface border border-line w-full sm:max-w-md rounded-t-[20px] sm:rounded-[20px] shadow-floating overflow-hidden max-h-[92vh] flex flex-col"
           >
-            <div className="h-0.5 w-full bg-gradient-to-r from-gold/0 via-gold to-gold/0" />
-
-            <div className="bg-sidebar border-b border-border px-6 py-5 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gold/10 border border-gold/25 flex items-center justify-center">
-                  <CalendarIcon size={15} className="text-gold" />
-                </div>
-                <h3 className="font-heading font-bold text-lg text-primary italic">
-                  {appointment ? 'Editar Agendamento' : 'Novo Agendamento'}
-                </h3>
-              </div>
-              <button onClick={onClose} className="text-muted hover:text-primary transition-colors p-1">
-                <X size={20} />
+            <div className="px-6 py-4 flex justify-between items-center border-b border-line">
+              <h3 className="text-lg font-bold text-ink">
+                {appointment ? 'Editar agendamento' : 'Novo agendamento'}
+              </h3>
+              <button onClick={onClose} aria-label="Fechar" className="btn-icon">
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto">
               {formError && (
-                <div className="flex items-center gap-2 p-3.5 bg-red-950/60 border border-red-500/20 text-error text-xs font-bold rounded-xl">
-                  <AlertCircle size={14} /> {formError}
+                <div className="flex items-center gap-2 p-3 bg-[#FDECEC] text-[#D84A4A] text-[13px] font-medium rounded-xl">
+                  <AlertCircle size={15} /> {formError}
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="label-xs"><User size={11} /> Cliente *</label>
+              <div>
+                <label className="label"><User size={13} /> Cliente *</label>
                 <select
                   value={selectedCustomer}
                   onChange={(e) => setSelectedCustomer(e.target.value)}
-                  className="input-dark"
+                  className="input"
                   required
                 >
                   <option value="">Selecione um cliente</option>
@@ -176,12 +169,12 @@ export function AppointmentModal({
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="label-xs"><Scissors size={11} /> Serviço *</label>
+              <div>
+                <label className="label"><Scissors size={13} /> Serviço *</label>
                 <select
                   value={selectedService}
                   onChange={(e) => setSelectedService(e.target.value)}
-                  className="input-dark"
+                  className="input"
                   required
                 >
                   <option value="">Selecione um serviço</option>
@@ -194,12 +187,12 @@ export function AppointmentModal({
               </div>
 
               {barbers.length > 0 && (
-                <div className="space-y-1">
-                  <label className="label-xs"><User size={11} /> Barbeiro</label>
+                <div>
+                  <label className="label"><User size={13} /> Barbeiro</label>
                   <select
                     value={appointmentBarberId}
                     onChange={(e) => setAppointmentBarberId(e.target.value)}
-                    className="input-dark"
+                    className="input"
                   >
                     <option value="">Sem preferência</option>
                     {barbers.map((b) => (
@@ -209,77 +202,73 @@ export function AppointmentModal({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="label-xs"><CalendarIcon size={11} /> Data *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label"><CalendarIcon size={13} /> Data *</label>
                   <input
                     type="date"
                     value={appointmentDate}
                     onChange={(e) => setAppointmentDate(e.target.value)}
-                    className="input-dark font-mono"
+                    className="input"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="label-xs"><Clock size={11} /> Horário *</label>
+                <div>
+                  <label className="label"><Clock size={13} /> Horário *</label>
                   <input
                     type="time"
                     value={appointmentTime}
                     onChange={(e) => setAppointmentTime(e.target.value)}
-                    className="input-dark font-mono"
+                    className="input"
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="label-xs">Observações</label>
+              <div>
+                <label className="label">Observações</label>
                 <textarea
                   value={appointmentNotes}
                   onChange={(e) => setAppointmentNotes(e.target.value)}
-                  rows={2}
-                  className="input-dark resize-none"
-                  placeholder="Ex: Prefere tesoura, alergia a produto X..."
+                  rows={3}
+                  className="input-textarea"
+                  placeholder="Ex: prefere tesoura, alergia a produto X…"
                 />
               </div>
 
               {customerPrefs && (
-                <div className="bg-gold/5 border border-gold/15 rounded-xl p-4 space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                    <Sparkles size={10} /> Preferências do Cliente
+                <div className="bg-gold-soft/40 border border-[#9C7B47]/20 rounded-2xl p-4 space-y-1.5">
+                  <p className="text-[12px] font-semibold text-gold-dark flex items-center gap-1.5">
+                    <Sparkles size={12} /> Preferências do cliente
                   </p>
-                  <div className="space-y-1.5">
-                    {customerPrefs.corte_preferido && (
-                      <p className="text-xs text-primary flex items-center gap-2">
-                        <span className="text-gold">💇</span> <span className="text-faint font-bold">Corte:</span> {customerPrefs.corte_preferido}
-                      </p>
-                    )}
-                    {customerPrefs.barba && (
-                      <p className="text-xs text-primary flex items-center gap-2">
-                        <span className="text-gold">🧔</span> <span className="text-faint font-bold">Barba:</span> {customerPrefs.barba}
-                      </p>
-                    )}
-                    {customerPrefs.barbeiro_favorito && (
-                      <p className="text-xs text-primary flex items-center gap-2">
-                        <span className="text-gold">⭐</span> <span className="text-faint font-bold">Barbeiro fav.:</span> {customerPrefs.barbeiro_favorito}
-                      </p>
-                    )}
-                    {customerPrefs.alergias && customerPrefs.alergias.length > 0 && (
-                      <p className="text-xs text-orange-300 flex items-center gap-2">
-                        <span>⚠️</span> <span className="text-faint font-bold">Alergias:</span> {customerPrefs.alergias.join(', ')}
-                      </p>
-                    )}
-                    {customerPrefs.observacoes && (
-                      <p className="text-xs text-muted flex items-center gap-2">
-                        <span className="text-gold">📝</span> {customerPrefs.observacoes}
-                      </p>
-                    )}
-                  </div>
+                  {customerPrefs.corte_preferido && (
+                    <p className="text-[13px] text-ink">
+                      <span className="text-ink-soft font-medium">Corte:</span> {customerPrefs.corte_preferido}
+                    </p>
+                  )}
+                  {customerPrefs.barba && (
+                    <p className="text-[13px] text-ink">
+                      <span className="text-ink-soft font-medium">Barba:</span> {customerPrefs.barba}
+                    </p>
+                  )}
+                  {customerPrefs.barbeiro_favorito && (
+                    <p className="text-[13px] text-ink">
+                      <span className="text-ink-soft font-medium">Barbeiro favorito:</span> {customerPrefs.barbeiro_favorito}
+                    </p>
+                  )}
+                  {customerPrefs.alergias && customerPrefs.alergias.length > 0 && (
+                    <p className="text-[13px] text-[#B67A18]">
+                      <span className="font-medium">Alergias:</span> {customerPrefs.alergias.join(', ')}
+                    </p>
+                  )}
+                  {customerPrefs.observacoes && (
+                    <p className="text-[13px] text-ink-soft">{customerPrefs.observacoes}</p>
+                  )}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="label-xs">Status</label>
+              <div>
+                <label className="label">Status</label>
                 <div className="flex flex-wrap gap-2">
                   {STATUS_KEYS.map((s) => (
                     <button
@@ -287,10 +276,10 @@ export function AppointmentModal({
                       type="button"
                       onClick={() => handleStatusClick(s)}
                       className={cn(
-                        'px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg border transition-all',
+                        'px-3 h-8 text-[12px] font-semibold rounded-lg border transition-colors',
                         modalStatus === s
-                          ? 'border-gold bg-gold/15 text-gold shadow-[0_0_8px_rgba(201,168,76,0.2)]'
-                          : 'border-border text-faint hover:text-muted hover:border-border2',
+                          ? 'border-[#BE9B64] bg-gold-soft text-gold-dark'
+                          : 'border-line bg-white text-ink-soft hover:text-ink'
                       )}
                     >
                       {STATUS_LABELS[s]}
@@ -299,14 +288,10 @@ export function AppointmentModal({
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="btn-gold w-full py-3.5 flex items-center justify-center gap-2 mt-1"
-              >
+              <button type="submit" disabled={isSaving} className="btn-primary w-full h-12 mt-2">
                 {isSaving
                   ? <Loader2 className="animate-spin" size={18} />
-                  : <><Check size={16} /> {appointment ? 'Salvar Alterações' : 'Confirmar Agendamento'}</>
+                  : <><Check size={16} /> {appointment ? 'Salvar alterações' : 'Confirmar agendamento'}</>
                 }
               </button>
             </form>

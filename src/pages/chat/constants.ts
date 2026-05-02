@@ -2,24 +2,24 @@ import type { ElementType } from 'react';
 import { Bot, Crown, Hash, User } from 'lucide-react';
 import { ConversationStatus, ConversationChannel } from '@/services/chatService';
 
-export const STATUS_CONFIG: Record<ConversationStatus, { label: string; color: string; dot: string }> = {
-  active:      { label: 'Ativa',        color: 'text-emerald-400', dot: 'bg-emerald-400' },
-  open:        { label: 'Aberta',       color: 'text-blue-400',    dot: 'bg-blue-400' },
-  ai_handling: { label: 'IA Atendendo', color: 'text-gold',        dot: 'bg-gold' },
-  closed:      { label: 'Encerrada',    color: 'text-faint',       dot: 'bg-faint' },
-  escalated:   { label: 'Escalada',     color: 'text-orange-400',  dot: 'bg-orange-400' },
+export const STATUS_CONFIG: Record<ConversationStatus, { label: string; color: string; dot: string; pill: string }> = {
+  active:      { label: 'Ativa',        color: 'text-[#11895C]', dot: 'bg-[#11895C]', pill: 'bg-[#E8F6F0] text-[#11895C]' },
+  open:        { label: 'Aberta',       color: 'text-[#2E6FE8]', dot: 'bg-[#2E6FE8]', pill: 'bg-[#EAF1FF] text-[#2E6FE8]' },
+  ai_handling: { label: 'IA atendendo', color: 'text-[#9C7B47]', dot: 'bg-[#BE9B64]', pill: 'bg-[#E9DEC9] text-[#9C7B47]' },
+  closed:      { label: 'Encerrada',    color: 'text-[#A39F9D]', dot: 'bg-[#A39F9D]', pill: 'bg-[#F3F3F1] text-[#645F5C]' },
+  escalated:   { label: 'Escalada',     color: 'text-[#D84A4A]', dot: 'bg-[#D84A4A]', pill: 'bg-[#FDECEC] text-[#D84A4A]' },
 };
 
 export const ROLE_CONFIG: Record<string, { label: string; icon: ElementType; color: string }> = {
-  client:    { label: 'Cliente',   icon: User,  color: 'text-blue-400' },
-  user:      { label: 'Cliente',   icon: User,  color: 'text-blue-400' },
-  ai:        { label: 'IA',        icon: Bot,   color: 'text-gold' },
-  assistant: { label: 'IA',        icon: Bot,   color: 'text-gold' },
-  owner:     { label: 'Barbeiro',  icon: Crown, color: 'text-emerald-400' },
-  system:    { label: 'Sistema',   icon: Hash,  color: 'text-faint' },
+  client:    { label: 'Cliente',   icon: User,  color: 'text-[#645F5C]' },
+  user:      { label: 'Cliente',   icon: User,  color: 'text-[#645F5C]' },
+  ai:        { label: 'IA',        icon: Bot,   color: 'text-[#9C7B47]' },
+  assistant: { label: 'IA',        icon: Bot,   color: 'text-[#9C7B47]' },
+  owner:     { label: 'Barbeiro',  icon: Crown, color: 'text-[#2E6FE8]' },
+  system:    { label: 'Sistema',   icon: Hash,  color: 'text-[#A39F9D]' },
 };
 
 export const CHANNEL_ICON: Record<ConversationChannel, { icon: string; color: string }> = {
-  whatsapp:  { icon: '💬', color: 'text-emerald-400' },
-  instagram: { icon: '📸', color: 'text-pink-400' },
+  whatsapp:  { icon: '💬', color: 'text-[#11895C]' },
+  instagram: { icon: '📸', color: 'text-[#D84A4A]' },
 };

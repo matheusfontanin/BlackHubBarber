@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Send, Loader2, Crown } from 'lucide-react';
+import { useRef } from 'react';
+import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MessageComposerProps {
@@ -17,7 +17,7 @@ export function MessageComposer({
   onSend,
   isSending,
   inputRef,
-  placeholder = "Digite uma mensagem como barbeiro...",
+  placeholder = 'Digite uma mensagem...',
 }: MessageComposerProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textAreaRef = inputRef ?? internalRef;
@@ -30,18 +30,18 @@ export function MessageComposer({
   };
 
   return (
-    <div className="border-t border-border bg-sidebar px-4 lg:px-6 py-4">
-      <div className="flex items-end gap-3">
+    <div className="border-t border-line bg-white px-4 lg:px-6 py-4 shrink-0">
+      <div className="flex items-end gap-3 max-w-3xl mx-auto">
         <textarea
           ref={textAreaRef}
           value={messageInput}
-          onChange={e => onMessageChange(e.target.value)}
+          onChange={(e) => onMessageChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={1}
-          className="flex-1 input-dark resize-none py-3 text-sm min-h-[44px] max-h-[120px]"
-          style={{ height: 'auto', overflow: 'hidden' }}
-          onInput={e => {
+          className="flex-1 input resize-none py-3 text-sm min-h-[44px] max-h-[120px]"
+          style={{ height: 'auto' }}
+          onInput={(e) => {
             const el = e.target as HTMLTextAreaElement;
             el.style.height = 'auto';
             el.style.height = Math.min(el.scrollHeight, 120) + 'px';
@@ -51,18 +51,15 @@ export function MessageComposer({
           onClick={onSend}
           disabled={!messageInput.trim() || isSending}
           className={cn(
-            'p-3 rounded-xl transition-all shrink-0',
+            'p-3 rounded-xl transition-colors shrink-0',
             messageInput.trim()
-              ? 'bg-gold text-sidebar shadow-[0_2px_12px_rgba(201,168,76,0.4)] hover:bg-gold-light'
-              : 'bg-surface text-faint cursor-not-allowed',
+              ? 'bg-[#BE9B64] text-white hover:bg-[#9C7B47]'
+              : 'bg-[#F3F3F1] text-ink-faint cursor-not-allowed',
           )}
         >
           {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
         </button>
       </div>
-      <p className="text-[9px] text-faint mt-2 flex items-center gap-1">
-        <Crown size={8} /> Mensagem enviada como dono da barbearia
-      </p>
     </div>
   );
 }

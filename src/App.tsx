@@ -53,14 +53,14 @@ export default function App() {
     <AuthProvider>
       <Toaster
         position="top-right"
-        theme="dark"
-        richColors
+        theme="light"
         closeButton
         toastOptions={{
           style: {
-            background: '#1A1A2E',
-            border: '1px solid rgba(196, 163, 90, 0.25)',
-            color: '#FAFAF8',
+            background: '#FFFFFF',
+            border: '1px solid #ECE8E3',
+            color: '#12100D',
+            boxShadow: '0 12px 30px rgba(18,16,13,0.08)',
           },
         }}
       />
@@ -99,7 +99,7 @@ export default function App() {
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/chat" element={<ChatPage />} />
-            <Route path="/finance" element={<div className="p-8"><h1 className="text-4xl font-heading font-medium tracking-tight">Financeiro (Em breve)</h1></div>} />
+            <Route path="/finance" element={<div className="p-8"><h1 className="text-3xl font-bold tracking-tight">Financeiro (Em breve)</h1></div>} />
           </Route>
 
           {/* Redirects */}

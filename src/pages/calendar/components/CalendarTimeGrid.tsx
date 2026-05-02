@@ -29,54 +29,54 @@ export function CalendarTimeGrid({
   onSlotClick,
   onAppointmentClick,
 }: CalendarTimeGridProps) {
-  const gridCols = weekMode ? 'grid-cols-8' : 'grid-cols-[56px_1fr]';
+  const gridCols = weekMode ? 'grid-cols-8' : 'grid-cols-[64px_1fr]';
 
   return (
     <div className="card overflow-hidden">
-      <div className={cn('grid border-b border-border', gridCols)}>
-        <div className="p-4 border-r border-border bg-sidebar/50" />
+      <div className={cn('grid border-b border-line bg-[#F8F8F7]', gridCols)}>
+        <div className="p-3 border-r border-line" />
         {days.map((day) => (
           <button
             key={day.toString()}
             onClick={() => onDayHeaderClick(day)}
             className={cn(
-              'p-4 text-center border-r border-border last:border-r-0 transition-colors cursor-pointer hover:bg-gold/[0.04]',
-              isToday(day) && 'bg-gold/5',
-              isSameDay(day, panelDate) && 'bg-gold/[0.07]',
+              'p-3 text-center border-r border-line last:border-r-0 transition-colors cursor-pointer hover:bg-white',
+              isToday(day) && 'bg-white',
+              isSameDay(day, panelDate) && 'bg-gold-soft/50',
             )}
           >
-            <p className="text-[10px] uppercase tracking-widest font-bold text-faint mb-1">
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-ink-faint mb-0.5">
               {format(day, 'EEE', { locale: ptBR })}
             </p>
-            <p className={cn('text-xl font-mono font-bold', isToday(day) ? 'text-gold' : 'text-muted')}>
+            <p className={cn('text-lg font-bold', isToday(day) ? 'text-[#BE9B64]' : 'text-ink')}>
               {format(day, 'dd')}
             </p>
             {appointments.some((a) => isSameDay(parseISO(a.starts_at), day)) && (
-              <div className="w-1.5 h-1.5 rounded-full bg-gold mx-auto mt-1 opacity-60" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#BE9B64] mx-auto mt-1 opacity-70" />
             )}
           </button>
         ))}
       </div>
 
-      <div className={cn('grid h-[520px] lg:h-[600px] overflow-y-auto relative', gridCols)}>
-        <div className="border-r border-border bg-sidebar/30">
+      <div className={cn('grid h-[520px] lg:h-[600px] overflow-y-auto relative bg-white', gridCols)}>
+        <div className="border-r border-line">
           {HOURS.map((hour) => (
-            <div key={hour} className="h-20 p-2 text-right border-b border-border">
-              <span className="text-[10px] font-mono font-bold text-faint">{hour}:00</span>
+            <div key={hour} className="h-20 px-2 pt-1 text-right border-b border-line">
+              <span className="text-[11px] font-medium text-ink-faint">{hour}:00</span>
             </div>
           ))}
         </div>
 
         {days.map((day) => (
-          <div key={day.toString()} className="relative border-r border-border last:border-r-0">
+          <div key={day.toString()} className="relative border-r border-line last:border-r-0">
             {HOURS.map((hour) => (
               <div
                 key={hour}
                 onClick={() => onSlotClick(day, hour)}
-                className="h-20 border-b border-border hover:bg-gold/[0.03] transition-colors cursor-pointer group"
+                className="h-20 border-b border-line hover:bg-[#FBFAF8] transition-colors cursor-pointer group"
               >
-                <div className="opacity-0 group-hover:opacity-100 p-2 flex justify-end">
-                  <Plus size={11} className="text-gold" />
+                <div className="opacity-0 group-hover:opacity-100 p-1.5 flex justify-end">
+                  <Plus size={12} className="text-[#BE9B64]" />
                 </div>
               </div>
             ))}
@@ -87,21 +87,21 @@ export function CalendarTimeGrid({
                 const start = parseISO(app.starts_at);
                 const top = (start.getHours() - 8) * 80 + (start.getMinutes() / 60) * 80;
                 const duration = (parseISO(app.ends_at).getTime() - start.getTime()) / 60000;
-                const height = Math.max((duration / 60) * 80, 28);
+                const height = Math.max((duration / 60) * 80, 32);
                 const color = barberColor(app.barber_id, barbers);
 
                 return (
                   <motion.div
                     key={app.id}
-                    initial={{ opacity: 0, scale: 0.92 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    style={{ top: `${top}px`, height: `${height}px` }}
+                    style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
                     onClick={(e) => {
                       e.stopPropagation();
                       onAppointmentClick(app);
                     }}
                     className={cn(
-                      'absolute left-1 right-1 p-2 rounded-lg shadow-md z-10 overflow-hidden cursor-pointer border-l-2 transition-all hover:brightness-110 hover:shadow-lg',
+                      'absolute left-1.5 right-1.5 p-2 rounded-xl z-10 overflow-hidden cursor-pointer border transition-colors',
                       STATUS_CHIP[app.status] ?? STATUS_CHIP.scheduled,
                     )}
                   >
@@ -109,10 +109,12 @@ export function CalendarTimeGrid({
                       {app.barber_id && (
                         <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', color.dot)} />
                       )}
-                      <p className="text-[10px] font-bold leading-tight truncate">{app.clients?.name}</p>
+                      <p className="text-[11px] font-semibold leading-tight truncate">
+                        {app.clients?.name}
+                      </p>
                     </div>
-                    <p className="text-[8px] opacity-70 uppercase tracking-tighter truncate">{app.services?.name}</p>
-                    <p className="text-[8px] opacity-50 font-mono flex items-center gap-1 justify-between">
+                    <p className="text-[10px] opacity-80 truncate mt-0.5">{app.services?.name}</p>
+                    <p className="text-[10px] opacity-70 font-medium flex items-center gap-1 justify-between mt-0.5">
                       <span>{format(start, 'HH:mm')}</span>
                       {app.barbers?.name && (
                         <span className="truncate max-w-[60%]">{app.barbers.name}</span>

@@ -22,15 +22,18 @@ export function CalendarMonthGrid({ currentDate, appointments, onDayClick }: Cal
 
   return (
     <div className="card overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-7 border-b border-line bg-[#F8F8F7]">
         {WEEKDAYS.map((d) => (
-          <div key={d} className="p-3 text-center text-[10px] font-bold uppercase tracking-widest text-faint border-r last:border-r-0 border-border">
+          <div
+            key={d}
+            className="p-3 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-soft border-r last:border-r-0 border-line"
+          >
             {d}
           </div>
         ))}
       </div>
       {weeks.map((week, wi) => (
-        <div key={wi} className="grid grid-cols-7 border-b border-border last:border-b-0">
+        <div key={wi} className="grid grid-cols-7 border-b border-line last:border-b-0">
           {week.map((day) => {
             const dayApps = appointments.filter((a) => isSameDay(parseISO(a.starts_at), day));
             const inMonth = day.getMonth() === currentDate.getMonth();
@@ -39,22 +42,25 @@ export function CalendarMonthGrid({ currentDate, appointments, onDayClick }: Cal
                 key={day.toString()}
                 onClick={() => onDayClick(day)}
                 className={cn(
-                  'min-h-[90px] p-2 border-r last:border-r-0 border-border cursor-pointer hover:bg-gold/[0.03] transition-colors',
-                  !inMonth && 'opacity-30',
-                  isToday(day) && 'bg-gold/5',
+                  'min-h-[100px] p-2 border-r last:border-r-0 border-line cursor-pointer hover:bg-[#FBFAF8] transition-colors',
+                  !inMonth && 'opacity-40',
+                  isToday(day) && 'bg-gold-soft/40',
                 )}
               >
-                <p className={cn('text-sm font-mono font-bold mb-1', isToday(day) ? 'text-gold' : 'text-muted')}>
+                <p className={cn('text-sm font-semibold mb-1', isToday(day) ? 'text-[#BE9B64]' : 'text-ink')}>
                   {format(day, 'd')}
                 </p>
                 <div className="space-y-0.5">
                   {dayApps.slice(0, 3).map((app) => (
-                    <p key={app.id} className="text-[9px] font-bold bg-gold/10 border border-gold/20 text-gold rounded px-1 truncate">
+                    <p
+                      key={app.id}
+                      className="text-[11px] font-medium bg-[#E9DEC9] text-[#9C7B47] rounded-md px-1.5 py-0.5 truncate"
+                    >
                       {format(parseISO(app.starts_at), 'HH:mm')} {app.clients?.name}
                     </p>
                   ))}
                   {dayApps.length > 3 && (
-                    <p className="text-[9px] text-gold/50 font-bold">+{dayApps.length - 3} mais</p>
+                    <p className="text-[10px] text-ink-faint font-medium">+{dayApps.length - 3} mais</p>
                   )}
                 </div>
               </div>

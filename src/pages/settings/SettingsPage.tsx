@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Building, Users, CalendarClock, Bot, Link as LinkIcon, Activity } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
@@ -12,12 +12,12 @@ import AIHealthDashboard from '@/components/settings/AIHealthDashboard';
 import type { SettingsTab } from '@/types/settings';
 
 const TABS: { key: SettingsTab; label: string; icon: React.ElementType; desc: string }[] = [
-  { key: 'barbershop', label: 'Barbearia', icon: Building, desc: 'Dados do negócio' },
-  { key: 'team', label: 'Equipe', icon: Users, desc: 'Barbeiros e funções' },
-  { key: 'booking', label: 'Agenda', icon: CalendarClock, desc: 'Regras de agendamento' },
-  { key: 'ai', label: 'IA', icon: Bot, desc: 'Personalidade e contexto' },
-  { key: 'diagnostics', label: 'Diagnóstico', icon: Activity, desc: 'Saúde do agente' },
-  { key: 'integrations', label: 'Integrações', icon: LinkIcon, desc: 'WhatsApp, Calendar, N8N' },
+  { key: 'barbershop',   label: 'Barbearia',   icon: Building,     desc: 'Dados do negócio' },
+  { key: 'team',         label: 'Equipe',       icon: Users,        desc: 'Barbeiros e funções' },
+  { key: 'booking',      label: 'Agenda',       icon: CalendarClock, desc: 'Regras de agendamento' },
+  { key: 'ai',           label: 'IA',           icon: Bot,          desc: 'Personalidade e contexto' },
+  { key: 'diagnostics',  label: 'Diagnóstico',  icon: Activity,     desc: 'Saúde do agente' },
+  { key: 'integrations', label: 'Integrações',  icon: LinkIcon,     desc: 'WhatsApp, Calendar, N8N' },
 ];
 
 export default function SettingsPage() {
@@ -27,36 +27,34 @@ export default function SettingsPage() {
   if (tenantLoading) return null;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1200px] mx-auto">
-      {/* Header */}
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-[1200px] mx-auto">
       <header className="mb-6 lg:mb-8">
-        <p className="text-[11px] sm:text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Painel</p>
-        <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Configurações</h1>
-        <p className="text-sm text-muted mt-3">Centro de configuração do seu negócio e do assistente IA.</p>
+        <p className="page-eyebrow">Painel</p>
+        <h1 className="page-title">Configurações</h1>
       </header>
 
-      {/* Mobile: grid of tappable tiles (no horizontal scroll) */}
+      {/* Mobile grid */}
       <nav className="lg:hidden grid grid-cols-2 gap-2 mb-5">
-        {TABS.map(tab => {
+        {TABS.map((tab) => {
           const active = activeTab === tab.key;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-3 rounded-xl text-left transition-all border",
+                'flex items-center gap-2.5 px-3 py-3 rounded-xl text-left transition-colors border',
                 active
-                  ? "bg-gold/10 border-gold/30 text-gold shadow-[0_0_12px_rgba(201,168,76,0.08)]"
-                  : "bg-sidebar/60 border-border text-muted hover:text-primary"
+                  ? 'bg-gold-soft border-[#BE9B64]/30 text-[#9C7B47]'
+                  : 'bg-white border-line text-ink-soft hover:text-ink hover:border-line-strong',
               )}
             >
-              <tab.icon size={18} className={active ? 'text-gold shrink-0' : 'shrink-0'} />
+              <tab.icon
+                size={17}
+                className={cn('shrink-0', active ? 'text-[#BE9B64]' : 'text-ink-faint')}
+              />
               <div className="min-w-0">
-                <span className="block text-xs font-bold truncate">{tab.label}</span>
-                <span className={cn(
-                  "block text-[9px] font-medium truncate",
-                  active ? "text-gold/60" : "text-faint"
-                )}>{tab.desc}</span>
+                <span className="block text-[13px] font-semibold text-ink truncate">{tab.label}</span>
+                <span className="block text-[10px] text-ink-faint truncate">{tab.desc}</span>
               </div>
             </button>
           );
@@ -64,45 +62,47 @@ export default function SettingsPage() {
       </nav>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Desktop sidebar tabs */}
-        <nav className="hidden lg:flex lg:flex-col gap-1.5 shrink-0 lg:w-56">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all w-full text-left",
-                activeTab === tab.key
-                  ? "bg-gold/10 border border-gold/25 text-gold shadow-[0_0_12px_rgba(201,168,76,0.08)]"
-                  : "text-muted hover:text-primary hover:bg-surface/60 border border-transparent"
-              )}
-            >
-              <tab.icon size={17} className={activeTab === tab.key ? 'text-gold' : ''} />
-              <div>
-                <span className="block text-sm">{tab.label}</span>
-                <span className={cn(
-                  "block text-[10px] font-medium mt-0.5",
-                  activeTab === tab.key ? "text-gold/60" : "text-faint"
-                )}>{tab.desc}</span>
-              </div>
-            </button>
-          ))}
+        {/* Desktop sidebar */}
+        <nav className="hidden lg:flex lg:flex-col gap-1 shrink-0 lg:w-52">
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors',
+                  active
+                    ? 'bg-gold-soft text-[#9C7B47]'
+                    : 'text-ink-soft hover:text-ink hover:bg-[#F7F6F4]',
+                )}
+              >
+                <tab.icon
+                  size={16}
+                  className={cn('shrink-0', active ? 'text-[#BE9B64]' : 'text-ink-faint')}
+                />
+                <div>
+                  <span className="block text-[13px] font-semibold">{tab.label}</span>
+                  <span className="block text-[10px] text-ink-faint mt-0.5">{tab.desc}</span>
+                </div>
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Content Area */}
         <div className="flex-1 min-w-0">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="card p-4 sm:p-6 lg:p-8"
+            transition={{ duration: 0.18 }}
+            className="card p-5 sm:p-6 lg:p-8"
           >
-            {activeTab === 'barbershop' && <BarbershopSettingsSection />}
-            {activeTab === 'team' && <TeamSettingsSection />}
-            {activeTab === 'booking' && <BookingSettingsSection />}
-            {activeTab === 'ai' && <AiSettingsSection />}
-            {activeTab === 'diagnostics' && <AIHealthDashboard />}
+            {activeTab === 'barbershop'   && <BarbershopSettingsSection />}
+            {activeTab === 'team'         && <TeamSettingsSection />}
+            {activeTab === 'booking'      && <BookingSettingsSection />}
+            {activeTab === 'ai'           && <AiSettingsSection />}
+            {activeTab === 'diagnostics'  && <AIHealthDashboard />}
             {activeTab === 'integrations' && <IntegrationsSettingsSection />}
           </motion.div>
         </div>

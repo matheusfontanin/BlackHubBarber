@@ -1,123 +1,130 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
-   BLACKHUB BARBER — NELSON DARK DESIGN SYSTEM
-   Inspired by: Best Beauty Spa Salon reference
+   BLACKHUB BARBER — BARSHAVE LIGHT DESIGN SYSTEM
    ============================================================ */
 
 @theme {
   /* Typography */
-  --font-sans:    "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "Playfair Display", "Montserrat", ui-serif, system-ui, sans-serif;
+  --font-sans:    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* === BACKGROUND LAYERS (dark → light) === */
-  --color-sidebar:  #0f0f0f;   /* Deepest — sidebar rail */
-  --color-appbg:    #161616;   /* App shell background */
-  --color-bg:       #222222;   /* Main content surface / cards */
-  --color-surface:  #2a2a2a;   /* Elevated surface (inputs, hover rows) */
-  --color-surface2: #333333;   /* Higher elevation (dropdowns) */
+  /* === SURFACES === */
+  --color-app:           #F7F6F4;   /* Main canvas */
+  --color-surface:       #FFFFFF;   /* Cards, primary surface */
+  --color-surface-alt:   #F3F3F1;   /* Subtle elevation / table header */
+  --color-surface-soft:  #FBFAF8;   /* Hover row */
+  --color-sidebar:       #12100D;   /* Dark anchor sidebar */
+  --color-sidebar-item:  #1B1815;   /* Active item bg */
+  --color-dark-panel:    #171411;   /* Optional dark panels */
 
-  /* === GOLD ACCENT PALETTE === */
-  --color-gold:       #c9a84c;  /* Primary gold */
-  --color-gold-light: #e8c97a;  /* Hover / lighter gold */
-  --color-gold-dark:  #a8892f;  /* Pressed / deeper gold */
-  --color-gold-faint: #c9a84c1a; /* 10% gold for subtle tints */
+  /* === TEXT === */
+  --color-ink:        #12100D;   /* Primary text */
+  --color-ink-soft:   #645F5C;   /* Secondary text */
+  --color-ink-faint:  #A39F9D;   /* Tertiary text / placeholder */
+  --color-ink-invert: #FFFFFF;   /* Text on dark */
 
-  /* === TEXT PALETTE === */
-  --color-primary: #f0ede8;    /* Main text — warm white/cream */
-  --color-muted:   #8a8680;    /* Secondary text — mid-grey */
-  --color-faint:   #4a4845;    /* Subtle / placeholder */
+  /* === GOLD ACCENT === */
+  --color-gold:        #BE9B64;
+  --color-gold-dark:   #9C7B47;
+  --color-gold-soft:   #E9DEC9;
 
-  /* === BORDER / DIVIDER === */
-  --color-border:  #ffffff0f;  /* rgba(255,255,255,0.06) */
-  --color-border2: #ffffff1a;  /* slightly visible */
+  /* === BORDERS === */
+  --color-line:        #ECE8E3;   /* Soft divider */
+  --color-line-strong: #DED8D1;   /* Input border */
+  --color-line-dark:   #201B17;   /* Sidebar border */
 
-  /* === SEMANTIC LEGACY (backward compat) === */
-  --color-secondary: #c9a84c;  /* gold — replaces old teal */
-  --color-accent:    #e8c97a;  /* light gold */
+  /* === STATUS === */
+  --color-success:      #11895C;
+  --color-success-soft: #E8F6F0;
+  --color-warning:      #B67A18;
+  --color-warning-soft: #FFF4DE;
+  --color-danger:       #D84A4A;
+  --color-danger-soft:  #FDECEC;
+  --color-info:         #2E6FE8;
+  --color-info-soft:    #EAF1FF;
 
-  /* === STATUS COLORS (dark-theme optimized) === */
-  --color-success:  #4ade80;
-  --color-warning:  #fbbf24;
-  --color-error:    #f87171;
-  --color-info:     #60a5fa;
+  /* === LEGACY ALIASES (keep components working during transition) === */
+  --color-appbg:    #F7F6F4;
+  --color-bg:       #FFFFFF;
+  --color-surface2: #F3F3F1;
+  --color-primary:  #12100D;
+  --color-muted:    #645F5C;
+  --color-faint:    #A39F9D;
+  --color-border:   #ECE8E3;
+  --color-border2:  #DED8D1;
+  --color-secondary: #BE9B64;
+  --color-accent:    #BE9B64;
+  --color-gold-light: #D8B987;
+  --color-gold-faint: #BE9B6414;
+  --color-error:    #D84A4A;
 }
 
 /* ============================================================
-   BASE STYLES
+   BASE
    ============================================================ */
 @layer base {
-  *, *::before, *::after {
-    box-sizing: border-box;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
 
   html {
-    color-scheme: dark;
+    color-scheme: light;
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-appbg text-primary font-sans antialiased;
+    background-color: var(--color-app);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
     min-height: 100dvh;
+    font-feature-settings: "cv11", "ss01";
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading tracking-tight;
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    letter-spacing: -0.01em;
+    font-weight: 700;
   }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgba(201, 168, 76, 0.25);
+    background: rgba(18,16,13,0.12);
     border-radius: 99px;
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(201, 168, 76, 0.5);
-  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(18,16,13,0.22); }
 
-  /* Selection */
   ::selection {
-    background: rgba(201, 168, 76, 0.25);
-    color: #f0ede8;
+    background: rgba(190,155,100,0.25);
+    color: var(--color-ink);
   }
 
-  /* Placeholder */
   ::placeholder {
-    color: #4a4845;
+    color: var(--color-ink-faint);
     opacity: 1;
   }
 
-  /* Focus outline */
   :focus-visible {
-    outline: 2px solid rgba(201, 168, 76, 0.6);
+    outline: 2px solid var(--color-gold);
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  /* Input / select dark theme */
-  input, select, textarea {
-    color-scheme: dark;
-  }
+  input, select, textarea { color-scheme: light; }
 
-  /* Date/time inputs */
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.6) sepia(1) saturate(2) hue-rotate(10deg);
-    opacity: 0.5;
+    opacity: 0.55;
     cursor: pointer;
   }
 
-  /* Select arrow */
   select {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8680' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23645F5C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     padding-right: 36px !important;
@@ -125,110 +132,266 @@
 }
 
 /* ============================================================
-   COMPONENT UTILITIES
+   PRIMITIVES
+   ============================================================ */
+@layer components {
+  /* === Buttons === */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl
+           bg-[#BE9B64] text-white text-sm font-semibold
+           transition-colors duration-150
+           hover:bg-[#9C7B47]
+           active:bg-[#9C7B47]
+           disabled:bg-[#DED8D1] disabled:text-[#A39F9D] disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl
+           bg-white text-[#12100D] text-sm font-semibold
+           border border-[#DED8D1]
+           transition-colors duration-150
+           hover:bg-[#F7F6F4]
+           disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl
+           bg-transparent text-[#BE9B64] text-sm font-semibold
+           transition-colors duration-150
+           hover:bg-[#E9DEC9]/40
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl
+           bg-[#D84A4A] text-white text-sm font-semibold
+           transition-colors duration-150
+           hover:bg-[#B73C3C]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-lg
+           text-[#645F5C] bg-transparent
+           transition-colors duration-150
+           hover:bg-[#F3F3F1] hover:text-[#12100D];
+  }
+
+  /* === Legacy aliases (will be removed page by page) === */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl
+           bg-[#BE9B64] text-white text-sm font-semibold
+           transition-colors duration-150
+           hover:bg-[#9C7B47] active:bg-[#9C7B47]
+           disabled:bg-[#DED8D1] disabled:text-[#A39F9D] disabled:cursor-not-allowed;
+  }
+
+  /* === Cards === */
+  .card {
+    @apply bg-white border border-[#ECE8E3] rounded-2xl;
+    box-shadow: 0 1px 2px rgba(18,16,13,0.03);
+  }
+
+  .card-hover {
+    @apply bg-white border border-[#ECE8E3] rounded-2xl transition-colors duration-200 hover:border-[#DED8D1];
+    box-shadow: 0 1px 2px rgba(18,16,13,0.03);
+    transition-property: border-color, box-shadow;
+  }
+  .card-hover:hover {
+    box-shadow: 0 6px 20px rgba(18,16,13,0.05);
+  }
+
+  .section-card {
+    @apply bg-white border border-[#ECE8E3] rounded-[20px];
+  }
+
+  /* === Inputs === */
+  .input {
+    @apply w-full h-11 px-4 rounded-xl bg-white text-[#12100D] text-sm
+           border border-[#DED8D1]
+           placeholder:text-[#A39F9D]
+           transition-colors duration-150
+           focus:border-[#BE9B64] focus:ring-2 focus:ring-[#BE9B64]/15 focus:outline-none
+           disabled:bg-[#F3F3F1] disabled:cursor-not-allowed;
+  }
+
+  .input-textarea {
+    @apply w-full px-4 py-3 rounded-2xl bg-white text-[#12100D] text-sm
+           border border-[#DED8D1]
+           placeholder:text-[#A39F9D]
+           transition-colors duration-150
+           focus:border-[#BE9B64] focus:ring-2 focus:ring-[#BE9B64]/15 focus:outline-none;
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .input-search {
+    @apply w-full h-11 px-4 pl-10 rounded-xl bg-white text-[#12100D] text-sm
+           border border-[#DED8D1]
+           placeholder:text-[#A39F9D]
+           transition-colors duration-150
+           focus:border-[#BE9B64] focus:ring-2 focus:ring-[#BE9B64]/15 focus:outline-none
+           disabled:bg-[#F3F3F1] disabled:cursor-not-allowed;
+  }
+
+  /* legacy alias */
+  .input-dark {
+    @apply w-full h-11 px-4 rounded-xl bg-white text-[#12100D] text-sm
+           border border-[#DED8D1]
+           placeholder:text-[#A39F9D]
+           transition-colors duration-150
+           focus:border-[#BE9B64] focus:ring-2 focus:ring-[#BE9B64]/15 focus:outline-none
+           disabled:bg-[#F3F3F1] disabled:cursor-not-allowed;
+  }
+
+  /* === Labels === */
+  .label {
+    @apply text-xs font-semibold text-[#12100D] flex items-center gap-1.5 mb-1.5;
+  }
+
+  .label-muted {
+    @apply text-[11px] font-semibold text-[#645F5C] uppercase tracking-wider;
+  }
+
+  /* legacy */
+  .label-xs {
+    @apply text-xs font-semibold text-[#12100D] flex items-center gap-1.5 mb-1.5;
+  }
+
+  /* === Badges === */
+  .badge          { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold; }
+  .badge-success  { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#E8F6F0] text-[#11895C]; }
+  .badge-warning  { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#FFF4DE] text-[#B67A18]; }
+  .badge-danger   { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#FDECEC] text-[#D84A4A]; }
+  .badge-info     { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#EAF1FF] text-[#2E6FE8]; }
+  .badge-neutral  { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#F3F3F1] text-[#645F5C]; }
+  .badge-gold     { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#E9DEC9] text-[#9C7B47]; }
+
+  /* legacy badge aliases */
+  .badge-confirmed { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#E8F6F0] text-[#11895C]; }
+  .badge-pending   { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#FFF4DE] text-[#B67A18]; }
+  .badge-completed { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#EAF1FF] text-[#2E6FE8]; }
+  .badge-canceled  { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#FDECEC] text-[#D84A4A]; }
+
+  /* === Page header === */
+  .page-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 lg:mb-8;
+  }
+  .page-title {
+    @apply text-2xl sm:text-[28px] lg:text-[32px] font-bold text-[#12100D] leading-tight tracking-tight;
+  }
+  .page-subtitle {
+    @apply text-sm text-[#645F5C] mt-1;
+  }
+  .page-eyebrow {
+    @apply text-[11px] font-semibold text-[#A39F9D] uppercase tracking-[0.12em] mb-1;
+  }
+
+  /* === Section title === */
+  .section-title {
+    @apply text-lg sm:text-xl font-bold text-[#12100D] tracking-tight;
+  }
+
+  /* === Table === */
+  .table-wrap {
+    @apply bg-white border border-[#ECE8E3] rounded-2xl overflow-hidden;
+  }
+  .table-base {
+    @apply w-full text-left;
+  }
+  .table-base thead tr {
+    @apply bg-[#F8F8F7] border-b border-[#ECE8E3];
+  }
+  .table-base th {
+    @apply px-6 py-3 text-[11px] font-semibold text-[#645F5C] uppercase tracking-wider;
+  }
+  .table-base td {
+    @apply px-6 py-4 text-sm text-[#12100D];
+  }
+  .table-base tbody tr {
+    @apply border-b border-[#F0EEEA] transition-colors;
+  }
+  .table-base tbody tr:last-child {
+    @apply border-b-0;
+  }
+  .table-base tbody tr:hover {
+    background: var(--color-surface-soft);
+  }
+
+  /* === Segmented control === */
+  .segmented {
+    @apply inline-flex p-1 rounded-xl bg-[#F3F3F1] gap-1;
+  }
+  .segmented-item {
+    @apply px-4 py-1.5 rounded-lg text-[13px] font-semibold text-[#645F5C] transition-colors;
+  }
+  .segmented-item-active {
+    @apply bg-white text-[#12100D];
+    box-shadow: 0 1px 2px rgba(18,16,13,0.05);
+  }
+
+  /* === Dividers === */
+  .divider {
+    @apply h-px w-full bg-[#ECE8E3] my-4;
+  }
+
+  /* === Avatar === */
+  .avatar-gold {
+    @apply inline-flex items-center justify-center rounded-full bg-[#E9DEC9] text-[#9C7B47] font-semibold;
+  }
+}
+
+/* ============================================================
+   UTILITIES
    ============================================================ */
 @layer utilities {
-  /* Gold gradient button */
-  .btn-gold {
-    @apply bg-gradient-to-r from-gold to-gold-light text-sidebar font-bold
-           rounded-xl px-5 py-2.5 text-sm transition-all duration-200
-           hover:shadow-lg hover:opacity-90 active:scale-[0.97]
-           disabled:opacity-40 disabled:cursor-not-allowed;
-  }
+  .text-ink         { color: var(--color-ink); }
+  .text-ink-soft    { color: var(--color-ink-soft); }
+  .text-ink-faint   { color: var(--color-ink-faint); }
+  .text-ink-invert  { color: var(--color-ink-invert); }
+  .text-gold        { color: var(--color-gold); }
+  .text-gold-dark   { color: var(--color-gold-dark); }
 
-  /* Ghost button */
-  .btn-ghost {
-    @apply border border-border2 text-muted rounded-xl px-5 py-2.5 text-sm font-semibold
-           transition-all hover:border-gold/40 hover:text-primary active:scale-[0.97];
-  }
+  .bg-app           { background-color: var(--color-app); }
+  .bg-surface       { background-color: var(--color-surface); }
+  .bg-surface-alt   { background-color: var(--color-surface-alt); }
+  .bg-surface-soft  { background-color: var(--color-surface-soft); }
+  .bg-sidebar       { background-color: var(--color-sidebar); }
+  .bg-gold          { background-color: var(--color-gold); }
+  .bg-gold-soft     { background-color: var(--color-gold-soft); }
 
-  /* Dark card */
-  .card {
-    @apply bg-bg border border-border rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.3)];
-  }
+  .border-line          { border-color: var(--color-line); }
+  .border-line-strong   { border-color: var(--color-line-strong); }
 
-  /* Dark input */
-  .input-dark {
-    @apply w-full px-4 py-3 bg-surface border border-border2
-           focus:border-gold focus:ring-2 focus:ring-gold/10
-           rounded-xl outline-none transition-all text-sm font-medium text-primary;
-  }
+  /* legacy bg/text utilities still referenced by old code */
+  .bg-appbg    { background-color: var(--color-app); }
+  .bg-bg       { background-color: var(--color-surface); }
+  .bg-surface2 { background-color: var(--color-surface-alt); }
+  .text-primary { color: var(--color-ink); }
+  .text-muted   { color: var(--color-ink-soft); }
+  .text-faint   { color: var(--color-ink-faint); }
+  .text-error   { color: var(--color-danger); }
+  .border-border  { border-color: var(--color-line); }
+  .border-border2 { border-color: var(--color-line-strong); }
 
-  /* Label uppercase */
-  .label-xs {
-    @apply text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1.5 mb-2;
-  }
+  .shadow-card     { box-shadow: 0 6px 20px rgba(18,16,13,0.05); }
+  .shadow-floating { box-shadow: 0 12px 30px rgba(18,16,13,0.08); }
 
-  /* Gold text gradient */
-  .text-gold-gradient {
-    @apply bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent;
-  }
-
-  /* Subtle glow */
-  .glow-gold {
-    box-shadow: 0 0 20px rgba(201, 168, 76, 0.15);
-  }
-
-  /* Status badges dark */
-  .badge-confirmed {
-    @apply text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg
-           bg-emerald-950/80 text-emerald-400 ring-1 ring-inset ring-emerald-500/20;
-  }
-  .badge-pending {
-    @apply text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg
-           bg-amber-950/80 text-amber-400 ring-1 ring-inset ring-amber-500/20;
-  }
-  .badge-completed {
-    @apply text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg
-           bg-blue-950/80 text-blue-400 ring-1 ring-inset ring-blue-500/20;
-  }
-  .badge-canceled {
-    @apply text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg
-           bg-red-950/80 text-red-400 ring-1 ring-inset ring-red-500/20;
-  }
-
-  /* Divider line */
-  .divider {
-    @apply h-px w-full bg-border my-4;
-  }
-
-  /* Gold underline decoration for headings */
-  .heading-underline::after {
-    content: '';
-    display: block;
-    width: 2.5rem;
-    height: 2px;
-    background: linear-gradient(90deg, #c9a84c, #e8c97a);
-    margin-top: 0.5rem;
-    border-radius: 99px;
-  }
-
-  /* Noise overlay effect */
-  .noise-overlay::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    opacity: 0.4;
-    z-index: 0;
-  }
-
-  /* Chat bubble variants */
+  /* Chat bubbles (light theme) */
   .chat-bubble-client {
-    @apply bg-surface border border-border2 rounded-2xl rounded-bl-md
-           px-4 py-2.5 text-sm text-primary max-w-[75%];
+    @apply bg-white border border-[#ECE8E3] rounded-2xl rounded-bl-md
+           px-4 py-2.5 text-sm text-[#12100D] max-w-[75%];
   }
   .chat-bubble-ai {
-    @apply bg-gold/10 border border-gold/20 rounded-2xl rounded-br-md
-           px-4 py-2.5 text-sm text-primary max-w-[75%];
+    @apply bg-[#12100D] text-white rounded-2xl rounded-br-md
+           px-4 py-2.5 text-sm max-w-[75%];
   }
   .chat-bubble-owner {
-    @apply bg-blue-950/40 border border-blue-500/20 rounded-2xl rounded-br-md
-           px-4 py-2.5 text-sm text-primary max-w-[75%];
+    @apply bg-[#EAF1FF] border border-[#2E6FE8]/15 rounded-2xl rounded-br-md
+           px-4 py-2.5 text-sm text-[#12100D] max-w-[75%];
   }
   .chat-bubble-system {
-    @apply bg-surface2/50 border border-border rounded-xl
-           px-3 py-1.5 text-xs text-faint max-w-[60%] italic;
+    @apply bg-[#F3F3F1] rounded-xl
+           px-3 py-1.5 text-xs text-[#645F5C] max-w-[60%] italic;
   }
 }

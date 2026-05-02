@@ -1,12 +1,11 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, Bot, MessageSquare, ChevronLeft, Eye, Sparkles } from 'lucide-react';
+import { Loader2, Bot, MessageSquare, ChevronLeft, Eye, Sparkles, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Conversation } from '@/services/chatService';
-import { Message } from '@/services/chatService';
-import { ROLE_CONFIG, STATUS_CONFIG, CHANNEL_ICON } from '../constants';
+import { Conversation, Message } from '@/services/chatService';
+import { ROLE_CONFIG, CHANNEL_ICON } from '../constants';
 import { getConversationDisplayName } from '../utils';
 import { AIReasoningPanel } from './AIReasoningPanel';
 
@@ -44,14 +43,11 @@ export function MessageThread({
   };
 
   const groupedMessages: { date: string; msgs: Message[] }[] = [];
-  messages.forEach(msg => {
+  messages.forEach((msg) => {
     const dateKey = format(parseISO(msg.created_at), 'yyyy-MM-dd');
     const last = groupedMessages[groupedMessages.length - 1];
-    if (last && last.date === dateKey) {
-      last.msgs.push(msg);
-    } else {
-      groupedMessages.push({ date: dateKey, msgs: [msg] });
-    }
+    if (last && last.date === dateKey) last.msgs.push(msg);
+    else groupedMessages.push({ date: dateKey, msgs: [msg] });
   });
 
   const client = selectedConv?.clients;
@@ -60,109 +56,100 @@ export function MessageThread({
 
   if (!selectedConv) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-        <div className="w-20 h-20 rounded-2xl bg-gold/5 border border-gold/15 flex items-center justify-center mb-6">
-          <MessageSquare size={36} className="text-gold/30" />
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-app">
+        <div className="w-16 h-16 rounded-2xl bg-white border border-line flex items-center justify-center mb-5">
+          <MessageSquare size={28} className="text-ink-soft" />
         </div>
-        <h2 className="text-xl font-heading font-bold text-primary italic mb-2">Conversas IA</h2>
-        <p className="text-sm text-muted max-w-sm">
-          Selecione uma conversa à esquerda para acompanhar o atendimento da IA com seus clientes e barbeiros.
+        <h2 className="text-lg font-bold text-ink mb-1.5">Selecione uma conversa</h2>
+        <p className="text-sm text-ink-soft max-w-sm">
+          Escolha um atendimento à esquerda para acompanhar em tempo real.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex-col bg-appbg min-w-0">
-      {/* Chat header */}
-      <div className="bg-sidebar border-b border-border px-4 lg:px-6 py-3.5 flex items-center justify-between shrink-0 gap-3">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          {/* Mobile back button */}
+    <div className="flex-1 flex flex-col bg-app min-w-0 h-full">
+      <div className="bg-white border-b border-line px-4 lg:px-6 py-3 flex items-center justify-between shrink-0 gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {onBack && (
             <button
               onClick={onBack}
               aria-label="Voltar"
-              className="lg:hidden p-2 -ml-2 rounded-lg text-muted hover:text-primary"
+              className="lg:hidden btn-icon -ml-1"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={18} />
             </button>
           )}
-          <div className="w-9 h-9 rounded-xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gold-soft text-gold-dark flex items-center justify-center text-sm font-semibold shrink-0">
             {displayName.charAt(0).toUpperCase() ?? '?'}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <p className="text-sm font-semibold text-primary truncate">{displayName}</p>
-              <span className="text-[10px] shrink-0">{CHANNEL_ICON[selectedConv.channel].icon}</span>
+              <p className="text-sm font-semibold text-ink truncate">{displayName}</p>
+              <span className="text-[12px]">{CHANNEL_ICON[selectedConv.channel].icon}</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={cn(
-                'text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-1',
-                selectedConv.ai_enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400',
-              )}>
-                {selectedConv.ai_enabled ? 'IA ativa' : 'IA pausada'}
-              </span>
-              <span className="text-[10px] text-faint font-mono truncate">{contactPhone}</span>
-            </div>
+            <p className="text-[12px] text-ink-soft truncate">{contactPhone || '—'}</p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
           {onToggleAI && (
             <button
               type="button"
               onClick={() => onToggleAI(!selectedConv.ai_enabled)}
               className={cn(
-                'shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+                'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] font-semibold border transition-colors',
                 selectedConv.ai_enabled
-                  ? 'border-emerald-400 text-emerald-400 hover:bg-emerald-500/10'
-                  : 'border-amber-400 text-amber-400 hover:bg-amber-500/10',
+                  ? 'bg-[#E8F6F0] text-[#11895C] border-[#11895C]/20 hover:bg-[#DCF0E6]'
+                  : 'bg-[#FFF4DE] text-[#B67A18] border-[#B67A18]/20 hover:bg-[#FCEBC6]',
               )}
             >
-              {selectedConv.ai_enabled ? 'Pausar IA' : 'Ativar IA'}
+              <span
+                className={cn(
+                  'w-1.5 h-1.5 rounded-full',
+                  selectedConv.ai_enabled ? 'bg-[#11895C]' : 'bg-[#B67A18]',
+                )}
+              />
+              {selectedConv.ai_enabled ? 'IA ativa' : 'IA pausada'}
             </button>
           )}
-        </div>
-
-        {onToggleProfile && (
-          <div className="flex items-center gap-2 shrink-0">
+          {onToggleProfile && (
             <button
               onClick={onToggleProfile}
-              title="Perfil do cliente"
+              aria-label="Perfil do cliente"
               className={cn(
-                'p-2 rounded-lg transition-all',
-                showProfile
-                  ? 'bg-gold/10 text-gold border border-gold/25'
-                  : 'text-muted hover:text-primary hover:bg-white/[0.04]',
+                'btn-icon',
+                showProfile && 'bg-gold-soft text-gold-dark hover:bg-gold-soft',
               )}
             >
               <Eye size={16} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-5">
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="animate-spin text-gold" size={24} />
+            <Loader2 className="animate-spin text-[#BE9B64]" size={22} />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Bot size={32} className="text-gold/30 mb-3" />
-            <p className="text-sm text-muted">Nenhuma mensagem nesta conversa.</p>
+            <Bot size={28} className="text-ink-faint mb-3" />
+            <p className="text-sm text-ink-soft">Nenhuma mensagem nesta conversa.</p>
           </div>
         ) : (
-          <div className="space-y-1">
-            {groupedMessages.map(group => (
+          <div className="space-y-1 max-w-3xl mx-auto">
+            {groupedMessages.map((group) => (
               <div key={group.date}>
-                {/* Date divider */}
-                <div className="flex items-center justify-center my-4">
-                  <span className="bg-surface2 text-faint text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-border">
+                <div className="flex items-center justify-center my-5">
+                  <span className="bg-white border border-line text-ink-faint text-[11px] font-semibold px-3 py-1 rounded-full">
                     {formatDateHeader(group.msgs[0].created_at)}
                   </span>
                 </div>
 
-                {/* Messages */}
-                {group.msgs.map(msg => {
+                {group.msgs.map((msg) => {
                   const roleConf = ROLE_CONFIG[msg.role] ?? ROLE_CONFIG.client;
                   const isRight = msg.role === 'ai' || msg.role === 'assistant' || msg.role === 'owner';
                   const isSystem = msg.role === 'system';
@@ -174,61 +161,53 @@ export function MessageThread({
                   if (isSystem) {
                     return (
                       <div key={msg.id} className="flex justify-center my-2">
-                        <div className="chat-bubble-system text-center">
-                          {msg.content}
-                        </div>
+                        <div className="chat-bubble-system text-center">{msg.content}</div>
                       </div>
                     );
                   }
 
                   const bubbleClass = isRight
-                    ? (msg.role === 'owner' ? 'chat-bubble-owner' : 'chat-bubble-ai')
+                    ? msg.role === 'owner'
+                      ? 'chat-bubble-owner'
+                      : 'chat-bubble-ai'
                     : 'chat-bubble-client';
 
                   return (
                     <motion.div
                       key={msg.id}
-                      initial={{ opacity: 0, y: 8 }}
+                      initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.15 }}
-                      className={cn(
-                        'flex mb-2',
-                        isRight ? 'justify-end' : 'justify-start',
-                      )}
+                      className={cn('flex mb-2', isRight ? 'justify-end' : 'justify-start')}
                     >
-                      <div className={cn('group', isRight && 'flex flex-col items-end')}>
-                        {/* Role label */}
-                        <div className={cn(
-                          'flex items-center gap-1 mb-1',
-                          isRight && 'flex-row-reverse',
-                        )}>
-                          <roleConf.icon size={10} className={roleConf.color} />
-                          <span className={cn('text-[9px] font-bold uppercase tracking-wider', roleConf.color)}>
+                      <div className={cn('group flex flex-col', isRight && 'items-end')}>
+                        <div className={cn('flex items-center gap-1.5 mb-1', isRight && 'flex-row-reverse')}>
+                          <roleConf.icon size={11} className={roleConf.color} />
+                          <span className={cn('text-[10px] font-semibold uppercase tracking-wider', roleConf.color)}>
                             {roleConf.label}
                           </span>
                           {toolCalls && toolCalls.length > 0 && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-gold bg-gold/10 border border-gold/25 rounded-full px-1.5 py-0.5">
-                              🔧 {toolCalls.length === 1 ? 'ferramenta' : `${toolCalls.length} ferramentas`}
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold-dark bg-gold-soft rounded-full px-2 py-0.5">
+                              <Wrench size={9} />
+                              {toolCalls.length === 1 ? 'ferramenta' : `${toolCalls.length} ferramentas`}
                             </span>
                           )}
                         </div>
 
-                        {/* Bubble */}
                         <div className={bubbleClass}>
                           <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
                         </div>
 
-                        {/* Timestamp + AI reasoning trigger */}
                         <div className={cn('flex items-center gap-1.5 mt-1', isRight && 'flex-row-reverse')}>
-                          <span className="text-[9px] font-mono text-faint opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[10px] text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity">
                             {format(parseISO(msg.created_at), 'HH:mm')}
                           </span>
                           {isAI && (
                             <button
                               type="button"
                               onClick={() => setReasoningMessageId(msg.id)}
-                              title="Ver raciocínio da IA"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md text-gold/70 hover:text-gold hover:bg-gold/10"
+                              aria-label="Ver raciocínio da IA"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md text-gold-dark hover:bg-gold-soft"
                             >
                               <Sparkles size={11} />
                             </button>

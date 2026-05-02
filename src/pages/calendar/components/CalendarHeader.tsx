@@ -35,28 +35,26 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   return (
     <header className="flex flex-col gap-4 mb-5 lg:mb-6">
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Agenda</h1>
-        <button
-          onClick={onNewAppointment}
-          className="btn-gold hidden lg:flex items-center gap-2 shrink-0"
-        >
-          <Plus size={16} /> Novo Agendamento
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="page-eyebrow">Operação</p>
+          <h1 className="page-title">Agenda</h1>
+        </div>
+        <button onClick={onNewAppointment} className="btn-primary hidden lg:inline-flex shrink-0">
+          <Plus size={16} /> Novo agendamento
         </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex bg-sidebar border border-border rounded-xl p-1">
+        <div className="segmented">
           {VIEWS.map((v) => (
             <button
               key={v}
               onClick={() => onViewChange(v)}
               className={cn(
-                'px-3 sm:px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all',
+                'segmented-item',
                 v === 'week' && 'hidden lg:inline-block',
-                view === v
-                  ? 'bg-gold text-sidebar shadow-[0_1px_8px_rgba(201,168,76,0.35)]'
-                  : 'text-muted hover:text-primary',
+                view === v && 'segmented-item-active'
               )}
             >
               {VIEW_LABEL[v]}
@@ -64,46 +62,45 @@ export function CalendarHeader({
           ))}
         </div>
 
-        <div className="flex items-center gap-1.5 bg-sidebar border border-border rounded-xl px-2 sm:px-3 py-2 flex-1 sm:flex-none">
+        <div className="flex items-center gap-1 bg-white border border-line rounded-xl px-2 h-10 flex-1 sm:flex-none">
           <button
             onClick={() => onNavigate('prev')}
-            className="p-1 hover:text-gold text-muted transition-colors rounded shrink-0"
+            aria-label="Anterior"
+            className="p-1.5 text-ink-soft hover:text-ink transition-colors rounded-lg shrink-0"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-[11px] font-bold uppercase tracking-wider flex-1 sm:min-w-[160px] text-center text-primary capitalize truncate">
+          <span className="text-[13px] font-semibold flex-1 sm:min-w-[180px] text-center text-ink capitalize truncate">
             {periodLabel}
           </span>
           <button
             onClick={() => onNavigate('next')}
-            className="p-1 hover:text-gold text-muted transition-colors rounded shrink-0"
+            aria-label="Próximo"
+            className="p-1.5 text-ink-soft hover:text-ink transition-colors rounded-lg shrink-0"
           >
             <ChevronRight size={16} />
           </button>
         </div>
 
-        <button
-          onClick={onToday}
-          className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest bg-sidebar border border-border rounded-xl text-muted hover:text-gold hover:border-gold/30 transition-all"
-        >
+        <button onClick={onToday} className="btn-secondary h-10 px-4 text-[13px]">
           Hoje
         </button>
       </div>
 
       {barbers.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
           <button
             onClick={() => onSelectedBarberChange('all')}
             className={cn(
-              'shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all',
+              'shrink-0 inline-flex items-center gap-2 px-4 h-9 rounded-xl text-[13px] font-semibold transition-colors border',
               selectedBarberId === 'all'
-                ? 'bg-gold/15 border-gold/40 text-gold shadow-[0_0_12px_rgba(201,168,76,0.12)]'
-                : 'bg-sidebar border-border text-muted hover:text-primary hover:border-border2',
+                ? 'bg-[#12100D] text-white border-[#12100D]'
+                : 'bg-white border-line text-ink-soft hover:text-ink'
             )}
           >
             <CalendarIcon size={12} />
             Todos
-            <span className="text-[9px] font-mono opacity-60">({appointments.length})</span>
+            <span className="text-[11px] opacity-70">({appointments.length})</span>
           </button>
           {barbers.map((b) => {
             const color = barberColor(b.id, barbers);
@@ -114,15 +111,15 @@ export function CalendarHeader({
                 key={b.id}
                 onClick={() => onSelectedBarberChange(b.id!)}
                 className={cn(
-                  'shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all',
+                  'shrink-0 inline-flex items-center gap-2 px-4 h-9 rounded-xl text-[13px] font-semibold transition-colors border',
                   active
-                    ? cn('border', color.border, color.bg, color.text, 'ring-1', color.ring)
-                    : 'bg-sidebar border-border text-muted hover:text-primary hover:border-border2',
+                    ? cn(color.border, color.bg, color.text)
+                    : 'bg-white border-line text-ink-soft hover:text-ink'
                 )}
               >
-                <span className={cn('w-2 h-2 rounded-full', color.dot)} />
-                <span className="max-w-[120px] truncate normal-case tracking-normal">{b.name}</span>
-                <span className="text-[9px] font-mono opacity-60">({count})</span>
+                <span className={cn('w-1.5 h-1.5 rounded-full', color.dot)} />
+                <span className="max-w-[140px] truncate">{b.name}</span>
+                <span className="text-[11px] opacity-70">({count})</span>
               </button>
             );
           })}

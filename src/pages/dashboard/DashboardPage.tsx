@@ -5,11 +5,9 @@ import {
   DollarSign,
   TrendingUp,
   MessageSquare,
-  Clock,
   ArrowUpRight,
   Sparkles,
   ChevronRight,
-  Scissors,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -27,16 +25,16 @@ const RECENT_APPOINTMENTS = [
 ];
 
 const STATUS_MAP = {
-  confirmed: { label: 'Confirmado', classes: 'badge-confirmed' },
-  pending: { label: 'Aguardando', classes: 'badge-pending' },
-  completed: { label: 'Finalizado', classes: 'badge-completed' },
+  confirmed: { label: 'Confirmado', classes: 'badge-success' },
+  pending: { label: 'Aguardando', classes: 'badge-warning' },
+  completed: { label: 'Finalizado', classes: 'badge-info' },
 };
 
 const AI_ACTIVITY = [
-  { time: 'Agora', text: 'Novo agendamento via WhatsApp: João Silva para Corte às 14:30.', dot: 'bg-emerald-400' },
-  { time: '12min', text: 'Pedro Santos perguntou sobre horários de Sábado.', dot: 'bg-blue-400' },
-  { time: '45min', text: 'Lembrete enviado para Marcos Oliveira.', dot: 'bg-gold' },
-  { time: '1h', text: 'Relatório de faturamento diário gerado.', dot: 'bg-purple-400' },
+  { time: 'Agora', text: 'Novo agendamento via WhatsApp: João Silva para Corte às 14:30.', dot: 'bg-[#11895C]' },
+  { time: '12min', text: 'Pedro Santos perguntou sobre horários de Sábado.', dot: 'bg-[#2E6FE8]' },
+  { time: '45min', text: 'Lembrete enviado para Marcos Oliveira.', dot: 'bg-[#BE9B64]' },
+  { time: '1h', text: 'Relatório de faturamento diário gerado.', dot: 'bg-[#9C7B47]' },
 ];
 
 const TOP_BARBERS = [
@@ -64,7 +62,7 @@ export default function DashboardPage() {
   const handleSeed = async () => {
     if (!tenantId) return;
     const ok = confirm(
-      'Carregar dados de teste?\n\nIsso vai inserir barbeiros, serviços, clientes, atendimentos e conversas de exemplo no tenant atual. Barbeiros, serviços e clientes só serão criados se ainda não existirem. Atendimentos e conversas são sempre adicionados.'
+      'Carregar dados de teste?\n\nIsso vai inserir barbeiros, serviços, clientes, atendimentos e conversas de exemplo no tenant atual.'
     );
     if (!ok) return;
     setSeeding(true);
@@ -74,8 +72,6 @@ export default function DashboardPage() {
       const report = await seedDevTestData(tenantId);
       setSeedReport(report);
     } catch (err) {
-      console.error('[seedDevTestData] failed:', err);
-      // Supabase errors are plain objects with message/code/details/hint
       let msg = 'Erro desconhecido.';
       if (err instanceof Error) {
         msg = err.message;
@@ -98,8 +94,6 @@ export default function DashboardPage() {
       change: '+12.5%',
       positive: true,
       icon: DollarSign,
-      iconColor: 'text-gold',
-      iconBg: 'bg-gold/10 border border-gold/20',
     },
     {
       label: 'Novos Clientes',
@@ -107,8 +101,6 @@ export default function DashboardPage() {
       change: '+8.2%',
       positive: true,
       icon: Users,
-      iconColor: 'text-blue-400',
-      iconBg: 'bg-blue-500/10 border border-blue-500/20',
     },
     {
       label: 'Agendamentos IA',
@@ -116,19 +108,15 @@ export default function DashboardPage() {
       change: '+24.1%',
       positive: true,
       icon: MessageSquare,
-      iconColor: 'text-purple-400',
-      iconBg: 'bg-purple-500/10 border border-purple-500/20',
     },
     {
-      label: 'Custo IA (R$)',
-      value: aiStats?.total_cost_brl 
+      label: 'Custo IA',
+      value: aiStats?.total_cost_brl
         ? `R$ ${aiStats.total_cost_brl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         : 'R$ 0,00',
       change: aiStats?.total_tokens ? `${(aiStats.total_tokens / 1000).toFixed(1)}k tokens` : '0 tokens',
       positive: false,
       icon: Sparkles,
-      iconColor: 'text-emerald-400',
-      iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
     },
   ];
 
@@ -137,132 +125,130 @@ export default function DashboardPage() {
   const dateStr = today.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-7 max-w-[1600px] mx-auto">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 sm:mb-8">
+      <header className="page-header">
         <div>
-          <p className="text-[11px] sm:text-xs text-muted font-medium mb-1 capitalize tracking-wider uppercase">{dayName}, {dateStr}</p>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Visão Geral</h1>
+          <p className="page-eyebrow capitalize">{dayName}, {dateStr}</p>
+          <h1 className="page-title">Visão Geral</h1>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           {isDev && (
             <button
               onClick={handleSeed}
               disabled={seeding}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-purple-500/30 bg-purple-950/40 text-purple-300 text-[11px] font-bold uppercase tracking-wider hover:bg-purple-950/60 hover:border-purple-400/50 transition-all disabled:opacity-50"
-              title="Carrega barbeiros, clientes, atendimentos e conversas de exemplo"
+              className="btn-secondary w-full sm:w-auto"
             >
-              <Sparkles size={14} /> {seeding ? 'Carregando...' : 'Dados de teste'}
+              <Sparkles size={15} /> {seeding ? 'Carregando…' : 'Dados de teste'}
             </button>
           )}
           <button
             onClick={() => navigate('/calendar?new=1')}
-            className="btn-gold flex items-center justify-center gap-2 w-full sm:w-auto"
+            className="btn-primary w-full sm:w-auto"
           >
             <Calendar size={16} /> Novo Agendamento
           </button>
         </div>
       </header>
 
-      {/* Seed result banner */}
       {seedReport && (
-        <div className="mb-5 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-200 text-xs font-mono space-y-2">
-          <p className="font-bold uppercase tracking-wider">Dados de teste carregados ✓</p>
-          <p>
+        <div className="mb-6 p-4 rounded-2xl border border-[#11895C]/20 bg-[#E8F6F0] text-[#11895C] text-sm space-y-1">
+          <p className="font-semibold">Dados de teste carregados</p>
+          <p className="text-[13px]">
             {seedReport.barbers} barbeiros, {seedReport.services} serviços, {seedReport.clients} clientes,{' '}
             {seedReport.appointments} atendimentos, {seedReport.conversations} conversas ({seedReport.messages} mensagens),{' '}
             {seedReport.memories} memórias IA.
           </p>
           {seedReport.warnings.length > 0 && (
-            <div className="pt-2 border-t border-emerald-500/20 text-orange-300">
-              <p className="font-bold uppercase tracking-wider mb-1">⚠ Avisos</p>
+            <div className="pt-2 mt-2 border-t border-[#11895C]/15 text-[#B67A18]">
+              <p className="font-semibold mb-1">Avisos</p>
               {seedReport.warnings.map((w, i) => (
-                <p key={i} className="text-[11px]">• {w}</p>
+                <p key={i} className="text-[12px]">• {w}</p>
               ))}
             </div>
           )}
         </div>
       )}
       {seedError && (
-        <div className="mb-5 p-4 rounded-xl border border-red-500/30 bg-red-950/40 text-red-300 text-xs font-mono">
-          <p className="font-bold mb-1 uppercase tracking-wider">Falha ao carregar dados de teste</p>
-          <p>{seedError}</p>
+        <div className="mb-6 p-4 rounded-2xl border border-[#D84A4A]/20 bg-[#FDECEC] text-[#D84A4A] text-sm">
+          <p className="font-semibold mb-1">Falha ao carregar dados de teste</p>
+          <p className="text-[13px]">{seedError}</p>
         </div>
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-6">
         {stats.map((stat, i) => (
-
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.4 }}
-            className="card p-5 hover:border-border2 transition-all duration-300 group cursor-default"
+            transition={{ delay: i * 0.06, duration: 0.3 }}
+            className="card p-5"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", stat.iconBg, stat.iconColor)}>
+            <div className="flex items-start justify-between mb-5">
+              <div className="w-11 h-11 rounded-xl bg-[#F7F6F4] flex items-center justify-center text-[#12100D]">
                 <stat.icon size={20} />
               </div>
-              <span className={cn(
-                "text-[10px] font-bold px-2.5 py-1 rounded-lg",
-                stat.positive
-                  ? "bg-emerald-950/80 text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
-                  : "bg-red-950/80 text-red-400 ring-1 ring-inset ring-red-500/20"
-              )}>
+              <span
+                className={cn(
+                  'text-[11px] font-semibold px-2 py-0.5 rounded-full',
+                  stat.positive
+                    ? 'bg-[#E8F6F0] text-[#11895C]'
+                    : 'bg-[#F3F3F1] text-[#645F5C]'
+                )}
+              >
                 {stat.change}
               </span>
             </div>
-            <p className="text-[10px] text-muted font-semibold uppercase tracking-wider mb-1">{stat.label}</p>
-            <p className="text-2xl font-mono font-bold text-gold tracking-tight">{stat.value}</p>
+            <p className="text-[12px] text-ink-soft font-medium mb-1">{stat.label}</p>
+            <p className="text-[28px] font-bold text-ink tracking-tight leading-tight">{stat.value}</p>
           </motion.div>
         ))}
       </div>
 
-      {/* Main Grid */}
+      {/* Main grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
-
-        {/* Appointments Table */}
+        {/* Appointments table */}
         <div className="xl:col-span-2 card overflow-hidden">
-          <div className="p-5 lg:p-6 flex justify-between items-center border-b border-border">
+          <div className="px-6 py-5 flex justify-between items-center border-b border-line">
             <div>
-              <h3 className="font-heading font-bold text-xl text-primary italic">Próximos Agendamentos</h3>
-              <p className="text-xs text-muted mt-0.5">Hoje, {dateStr}</p>
+              <h3 className="section-title">Próximos Agendamentos</h3>
+              <p className="text-[13px] text-ink-soft mt-0.5">Hoje, {dateStr}</p>
             </div>
-            <button className="text-xs font-semibold text-gold hover:text-gold-light flex items-center gap-1 transition-colors">
-              Ver todos <ChevronRight size={14} />
+            <button className="text-sm font-semibold text-gold hover:text-gold-dark flex items-center gap-1 transition-colors">
+              Ver todos <ChevronRight size={15} />
             </button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="table-base">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="px-6 py-3 text-[10px] uppercase tracking-widest font-bold text-faint">Cliente</th>
-                  <th className="px-6 py-3 text-[10px] uppercase tracking-widest font-bold text-faint">Serviço</th>
-                  <th className="px-6 py-3 text-[10px] uppercase tracking-widest font-bold text-faint">Horário</th>
-                  <th className="px-6 py-3 text-[10px] uppercase tracking-widest font-bold text-faint">Valor</th>
-                  <th className="px-6 py-3 text-[10px] uppercase tracking-widest font-bold text-faint">Status</th>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Serviço</th>
+                  <th>Horário</th>
+                  <th>Valor</th>
+                  <th>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {RECENT_APPOINTMENTS.map((app) => {
                   const status = STATUS_MAP[app.status];
                   return (
-                    <tr key={app.id} className="hover:bg-surface/50 transition-colors cursor-pointer">
-                      <td className="px-6 py-4">
+                    <tr key={app.id} className="cursor-pointer">
+                      <td>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center text-[10px] font-bold text-gold">
+                          <div className="w-9 h-9 rounded-full bg-[#E9DEC9] text-[#9C7B47] flex items-center justify-center text-[12px] font-semibold">
                             {app.initials}
                           </div>
-                          <span className="font-semibold text-sm text-primary">{app.client}</span>
+                          <span className="font-semibold text-ink">{app.client}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted">{app.service}</td>
-                      <td className="px-6 py-4 font-mono text-sm font-medium text-primary">{app.time}</td>
-                      <td className="px-6 py-4 font-mono text-sm font-bold text-gold">{app.price}</td>
-                      <td className="px-6 py-4">
+                      <td className="text-ink-soft">{app.service}</td>
+                      <td className="font-mono text-ink">{app.time}</td>
+                      <td className="font-semibold text-ink">{app.price}</td>
+                      <td>
                         <span className={status.classes}>{status.label}</span>
                       </td>
                     </tr>
@@ -273,116 +259,110 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* AI Activity Feed */}
-        <div className="bg-sidebar border border-border rounded-2xl p-5 lg:p-6 flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-gold/10 border border-gold/25 flex items-center justify-center">
-              <Sparkles size={16} className="text-gold" />
+        {/* AI Activity */}
+        <div className="card p-6 flex flex-col">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-gold-soft flex items-center justify-center">
+              <Sparkles size={17} className="text-gold-dark" />
             </div>
             <div>
-              <h3 className="font-heading font-bold text-lg text-primary italic">Atividade IA</h3>
-              <p className="text-[10px] text-gold/60 uppercase tracking-wider font-semibold">Tempo real</p>
+              <h3 className="section-title">Atividade IA</h3>
+              <p className="text-[12px] text-ink-faint">Tempo real</p>
             </div>
           </div>
 
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-1">
             {AI_ACTIVITY.map((item, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, x: -8 }}
+                initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
+                transition={{ delay: 0.2 + i * 0.08 }}
                 className="flex gap-3"
               >
-                <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
-                  <div className={cn("w-2 h-2 rounded-full", item.dot)} />
-                  {i < AI_ACTIVITY.length - 1 && <div className="w-px flex-1 bg-border min-h-[20px]" />}
+                <div className="flex flex-col items-center gap-1 pt-1.5 shrink-0">
+                  <div className={cn('w-2 h-2 rounded-full', item.dot)} />
+                  {i < AI_ACTIVITY.length - 1 && <div className="w-px flex-1 bg-line min-h-[24px]" />}
                 </div>
                 <div className="pb-4">
-                  <p className="text-[13px] text-muted leading-relaxed">{item.text}</p>
-                  <p className="text-[10px] font-mono text-faint mt-1 uppercase">{item.time}</p>
+                  <p className="text-[13px] text-ink leading-relaxed">{item.text}</p>
+                  <p className="text-[11px] text-ink-faint mt-1">{item.time}</p>
                 </div>
               </motion.div>
             ))}
           </div>
 
-          <button className="w-full mt-2 py-2.5 border border-border2 rounded-xl text-xs font-semibold text-muted hover:text-primary hover:border-gold/30 transition-all flex items-center justify-center gap-2">
-            Ver Logs Completos <ArrowUpRight size={12} />
+          <button className="btn-secondary w-full mt-2">
+            Ver logs completos <ArrowUpRight size={14} />
           </button>
         </div>
       </div>
 
-      {/* Bottom Row */}
+      {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        {/* Top Barbers */}
-        <div className="card p-5 lg:p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-heading font-bold text-lg text-primary italic">Top Barbeiros</h3>
-            <span className="text-[10px] font-bold text-faint uppercase tracking-wider">Este mês</span>
+            <h3 className="section-title">Top Barbeiros</h3>
+            <span className="text-[12px] text-ink-faint">Este mês</span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {TOP_BARBERS.map((barber, i) => (
-              <div key={barber.name} className="flex items-center gap-4 p-3 rounded-xl hover:bg-surface/60 transition-colors">
-                <span className="text-xs font-mono font-bold text-faint w-4">{i + 1}</span>
-                <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center text-xs font-bold text-gold">
+              <div key={barber.name} className="flex items-center gap-4 p-3 rounded-xl hover:bg-surface-soft transition-colors">
+                <span className="text-sm font-mono font-semibold text-ink-faint w-4">{i + 1}</span>
+                <div className="w-10 h-10 rounded-full bg-[#E9DEC9] text-[#9C7B47] flex items-center justify-center text-[12px] font-semibold">
                   {barber.initials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-primary">{barber.name}</p>
-                  <p className="text-xs text-muted">{barber.appointments} agendamentos</p>
+                  <p className="font-semibold text-sm text-ink">{barber.name}</p>
+                  <p className="text-[12px] text-ink-soft">{barber.appointments} agendamentos</p>
                 </div>
-                <span className="font-mono text-sm font-bold text-gold">{barber.revenue}</span>
+                <span className="font-semibold text-sm text-ink">{barber.revenue}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Daily Summary */}
-        <div className="card p-5 lg:p-6 relative overflow-hidden">
-          {/* subtle gold glow */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-gold/[0.04] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
-          <div className="flex items-center gap-3 mb-5 relative">
-            <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center">
-              <TrendingUp size={20} className="text-gold" />
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-[#F7F6F4] flex items-center justify-center">
+              <TrendingUp size={18} className="text-[#12100D]" />
             </div>
             <div>
-              <h3 className="font-heading font-bold text-lg text-primary italic">Resumo do Dia</h3>
-              <p className="text-xs text-muted">Performance de hoje</p>
+              <h3 className="section-title">Resumo do Dia</h3>
+              <p className="text-[12px] text-ink-soft">Performance de hoje</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-5 relative">
-            <div className="bg-surface rounded-xl p-4 border border-border">
-              <p className="text-xs text-muted font-medium mb-1">Agendamentos</p>
-              <p className="text-2xl font-mono font-bold text-primary">12</p>
-              <p className="text-[10px] text-emerald-400 font-semibold mt-1">8 confirmados</p>
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="rounded-xl border border-line p-4">
+              <p className="text-[12px] text-ink-soft mb-1">Agendamentos</p>
+              <p className="text-2xl font-bold text-ink">12</p>
+              <p className="text-[11px] text-[#11895C] font-semibold mt-1">8 confirmados</p>
             </div>
-            <div className="bg-surface rounded-xl p-4 border border-border">
-              <p className="text-xs text-muted font-medium mb-1">Faturamento</p>
-              <p className="text-2xl font-mono font-bold text-gold">R$ 680</p>
-              <p className="text-[10px] text-emerald-400 font-semibold mt-1">+15% vs ontem</p>
+            <div className="rounded-xl border border-line p-4">
+              <p className="text-[12px] text-ink-soft mb-1">Faturamento</p>
+              <p className="text-2xl font-bold text-ink">R$ 680</p>
+              <p className="text-[11px] text-[#11895C] font-semibold mt-1">+15% vs ontem</p>
             </div>
           </div>
 
-          <div className="space-y-3 relative">
+          <div className="space-y-3">
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-medium text-muted">Ocupação do dia</span>
-                <span className="text-xs font-mono font-bold text-primary">75%</span>
+                <span className="text-[12px] text-ink-soft">Ocupação do dia</span>
+                <span className="text-[12px] font-semibold text-ink">75%</span>
               </div>
-              <div className="h-1.5 bg-surface2 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full" style={{ width: '75%' }} />
+              <div className="h-1.5 bg-[#F3F3F1] rounded-full overflow-hidden">
+                <div className="h-full bg-[#BE9B64] rounded-full" style={{ width: '75%' }} />
               </div>
             </div>
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-medium text-muted">Respostas pela IA</span>
-                <span className="text-xs font-mono font-bold text-primary">92%</span>
+                <span className="text-[12px] text-ink-soft">Respostas pela IA</span>
+                <span className="text-[12px] font-semibold text-ink">92%</span>
               </div>
-              <div className="h-1.5 bg-surface2 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: '92%' }} />
+              <div className="h-1.5 bg-[#F3F3F1] rounded-full overflow-hidden">
+                <div className="h-full bg-[#11895C] rounded-full" style={{ width: '92%' }} />
               </div>
             </div>
           </div>

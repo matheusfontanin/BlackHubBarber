@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar as CalendarIcon, Clock, User, Scissors, Search,
@@ -19,10 +19,6 @@ import { getActiveBarbers } from '@/services/teamService';
 import type { Barber } from '@/types/settings';
 import { useTenant } from '@/hooks/useTenant';
 
-/* ─────────────────────────────────────────────────────── */
-/* Constants                                               */
-/* ─────────────────────────────────────────────────────── */
-
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   scheduled:   'Agendado',
   confirmed:   'Confirmado',
@@ -33,21 +29,21 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
 };
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
-  scheduled:   'bg-gold/10 text-gold border-gold/25',
-  confirmed:   'bg-emerald-950/60 text-emerald-300 border-emerald-500/30',
-  canceled:    'bg-red-950/60 text-red-300 border-red-500/25',
-  completed:   'bg-surface/80 text-muted border-border',
-  no_show:     'bg-orange-950/60 text-orange-300 border-orange-500/25',
-  in_progress: 'bg-blue-950/60 text-blue-300 border-blue-500/30',
+  scheduled:   'badge-gold',
+  confirmed:   'badge-success',
+  canceled:    'badge-danger',
+  completed:   'badge-neutral',
+  no_show:     'badge-warning',
+  in_progress: 'badge-info',
 };
 
 const BARBER_PALETTE = [
-  { dot: 'bg-emerald-400', text: 'text-emerald-300', bg: 'bg-emerald-950/60', border: 'border-emerald-500/30' },
-  { dot: 'bg-blue-400',    text: 'text-blue-300',    bg: 'bg-blue-950/60',    border: 'border-blue-500/30' },
-  { dot: 'bg-purple-400',  text: 'text-purple-300',  bg: 'bg-purple-950/60',  border: 'border-purple-500/30' },
-  { dot: 'bg-pink-400',    text: 'text-pink-300',    bg: 'bg-pink-950/60',    border: 'border-pink-500/30' },
-  { dot: 'bg-orange-400',  text: 'text-orange-300',  bg: 'bg-orange-950/60',  border: 'border-orange-500/30' },
-  { dot: 'bg-cyan-400',    text: 'text-cyan-300',    bg: 'bg-cyan-950/60',    border: 'border-cyan-500/30' },
+  { dot: 'bg-[#11895C]', text: 'text-[#11895C]', bg: 'bg-[#E8F6F0]', border: 'border-[#11895C]/20' },
+  { dot: 'bg-[#2E6FE8]', text: 'text-[#2E6FE8]', bg: 'bg-[#EAF1FF]', border: 'border-[#2E6FE8]/20' },
+  { dot: 'bg-[#9C7B47]', text: 'text-[#9C7B47]', bg: 'bg-[#E9DEC9]', border: 'border-[#9C7B47]/20' },
+  { dot: 'bg-[#B67A18]', text: 'text-[#B67A18]', bg: 'bg-[#FFF4DE]', border: 'border-[#B67A18]/20' },
+  { dot: 'bg-[#D84A4A]', text: 'text-[#D84A4A]', bg: 'bg-[#FDECEC]', border: 'border-[#D84A4A]/20' },
+  { dot: 'bg-[#645F5C]', text: 'text-[#645F5C]', bg: 'bg-[#F3F3F1]', border: 'border-[#DED8D1]' },
 ];
 
 function barberColor(id: string | undefined, all: Barber[]) {
@@ -59,17 +55,12 @@ function barberColor(id: string | undefined, all: Barber[]) {
 
 type Tab = 'upcoming' | 'history';
 
-/** Friendly label for a date: "Hoje", "Amanhã", "sex, 12 de abril". */
 function dateHeader(date: Date): string {
   if (isToday(date))    return 'Hoje';
   if (isTomorrow(date)) return 'Amanhã';
   if (isYesterday(date))return 'Ontem';
   return format(date, "EEEE, d 'de' MMMM", { locale: ptBR });
 }
-
-/* ─────────────────────────────────────────────────────── */
-/* Component                                               */
-/* ─────────────────────────────────────────────────────── */
 
 export default function AppointmentsPage() {
   const { tenantId, loading: tenantLoading } = useTenant();
@@ -81,12 +72,10 @@ export default function AppointmentsPage() {
   const [selectedBarberId, setSelectedBarberId] = useState<string>('all');
   const [search, setSearch] = useState('');
 
-  /* ── Data fetching ── */
   const fetchData = useCallback(async () => {
     if (!tenantId) return;
     setLoading(true);
     try {
-      // Wide window: 120 days back, 180 days forward
       const start = format(subDays(new Date(), 120), "yyyy-MM-dd'T'00:00:00'Z'");
       const end   = format(addDays(new Date(), 180), "yyyy-MM-dd'T'23:59:59'Z'");
       const [apps, brbs] = await Promise.all([
@@ -104,7 +93,6 @@ export default function AppointmentsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  /* ── Derived lists ── */
   const { upcoming, history } = useMemo(() => {
     const now = new Date();
     const filterByBarber = (a: Appointment) =>
@@ -128,7 +116,6 @@ export default function AppointmentsPage() {
     return { upcoming, history };
   }, [appointments, selectedBarberId, search]);
 
-  /* ── Group by date ── */
   const grouped = useMemo(() => {
     const list = tab === 'upcoming' ? upcoming : history;
     const map = new Map<string, Appointment[]>();
@@ -145,7 +132,6 @@ export default function AppointmentsPage() {
     }));
   }, [tab, upcoming, history]);
 
-  /* ── Stats for the tab counts ── */
   const upcomingCount = upcoming.length;
   const historyCount  = history.length;
   const upcomingRevenue = upcoming
@@ -154,64 +140,54 @@ export default function AppointmentsPage() {
 
   if (tenantLoading) return null;
 
-  /* ═══════════════════════════════════════════════════════
-     RENDER
-  ═══════════════════════════════════════════════════════ */
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 max-w-[1200px] mx-auto">
-
-      {/* ── Header ── */}
-      <header className="mb-5 lg:mb-6">
-        <p className="text-[11px] sm:text-xs text-muted font-semibold mb-1 uppercase tracking-wider">Gestão</p>
-        <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary italic heading-underline">Atendimentos</h1>
-        <p className="text-sm text-muted mt-3">Histórico completo e próximos atendimentos agendados, por barbeiro.</p>
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-7 pb-24 lg:pb-8 max-w-[1400px] mx-auto">
+      <header className="mb-6 lg:mb-8">
+        <p className="page-eyebrow">Gestão</p>
+        <h1 className="page-title">Atendimentos</h1>
+        <p className="page-subtitle">Histórico completo e próximos atendimentos agendados, por barbeiro.</p>
       </header>
 
-      {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5 lg:mb-6">
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-gold/10 border border-gold/20 text-gold flex items-center justify-center">
-              <Sparkles size={16} />
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-6">
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gold-soft flex items-center justify-center text-gold-dark">
+              <Sparkles size={17} />
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-faint">Próximos</span>
           </div>
-          <p className="text-2xl font-mono font-bold text-gold">{upcomingCount}</p>
-          <p className="text-[10px] text-muted uppercase tracking-wider font-bold mt-0.5">Atendimentos</p>
+          <p className="text-[12px] text-ink-soft font-medium mb-1">Próximos</p>
+          <p className="text-2xl font-bold text-ink">{upcomingCount}</p>
         </div>
 
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-emerald-950/60 border border-emerald-500/25 text-emerald-400 flex items-center justify-center">
-              <DollarSign size={16} />
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#E8F6F0] flex items-center justify-center text-[#11895C]">
+              <DollarSign size={17} />
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-faint">Estimado</span>
           </div>
-          <p className="text-2xl font-mono font-bold text-emerald-400">R$ {upcomingRevenue.toFixed(0)}</p>
-          <p className="text-[10px] text-muted uppercase tracking-wider font-bold mt-0.5">Faturamento</p>
+          <p className="text-[12px] text-ink-soft font-medium mb-1">Faturamento estimado</p>
+          <p className="text-2xl font-bold text-ink">R$ {upcomingRevenue.toFixed(0)}</p>
         </div>
 
-        <div className="card p-4 sm:p-5 col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-surface border border-border text-muted flex items-center justify-center">
-              <History size={16} />
+        <div className="card p-5 col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#F7F6F4] flex items-center justify-center text-[#12100D]">
+              <History size={17} />
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-faint">Histórico</span>
           </div>
-          <p className="text-2xl font-mono font-bold text-primary">{historyCount}</p>
-          <p className="text-[10px] text-muted uppercase tracking-wider font-bold mt-0.5">Atendimentos passados</p>
+          <p className="text-[12px] text-ink-soft font-medium mb-1">Histórico</p>
+          <p className="text-2xl font-bold text-ink">{historyCount}</p>
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="flex bg-sidebar border border-border rounded-xl p-1 mb-4 w-full sm:w-auto">
+      {/* Tabs */}
+      <div className="segmented mb-4 w-full sm:w-auto">
         <button
           onClick={() => setTab('upcoming')}
           className={cn(
-            'flex-1 sm:flex-none px-4 sm:px-6 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all',
-            tab === 'upcoming'
-              ? 'bg-gold text-sidebar shadow-[0_1px_8px_rgba(201,168,76,0.35)]'
-              : 'text-muted hover:text-primary',
+            'segmented-item flex-1 sm:flex-none',
+            tab === 'upcoming' && 'segmented-item-active'
           )}
         >
           Próximos ({upcomingCount})
@@ -219,42 +195,41 @@ export default function AppointmentsPage() {
         <button
           onClick={() => setTab('history')}
           className={cn(
-            'flex-1 sm:flex-none px-4 sm:px-6 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all',
-            tab === 'history'
-              ? 'bg-gold text-sidebar shadow-[0_1px_8px_rgba(201,168,76,0.35)]'
-              : 'text-muted hover:text-primary',
+            'segmented-item flex-1 sm:flex-none',
+            tab === 'history' && 'segmented-item-active'
           )}
         >
           Histórico ({historyCount})
         </button>
       </div>
 
-      {/* ── Search + Barber filter ── */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+      {/* Search */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={15} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" size={16} />
           <input
             type="text"
-            placeholder="Buscar por cliente, serviço ou barbeiro..."
+            placeholder="Buscar por cliente, serviço ou barbeiro…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="input-dark pl-10"
+            className="input pl-10"
           />
         </div>
       </div>
 
+      {/* Barber filter */}
       {barbers.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6 pb-1 scrollbar-thin">
+        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6 pb-1">
           <button
             onClick={() => setSelectedBarberId('all')}
             className={cn(
-              'shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all',
+              'shrink-0 inline-flex items-center gap-2 px-4 h-9 rounded-xl text-[13px] font-semibold transition-colors',
               selectedBarberId === 'all'
-                ? 'bg-gold/15 border-gold/40 text-gold'
-                : 'bg-sidebar border-border text-muted hover:text-primary',
+                ? 'bg-[#12100D] text-white'
+                : 'bg-white border border-line text-ink-soft hover:text-ink'
             )}
           >
-            <User size={12} /> Todos
+            <User size={13} /> Todos
           </button>
           {barbers.map(b => {
             const color = barberColor(b.id, barbers);
@@ -264,36 +239,35 @@ export default function AppointmentsPage() {
                 key={b.id}
                 onClick={() => setSelectedBarberId(b.id!)}
                 className={cn(
-                  'shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold transition-all',
+                  'shrink-0 inline-flex items-center gap-2 px-4 h-9 rounded-xl text-[13px] font-semibold transition-colors border',
                   active
                     ? cn(color.border, color.bg, color.text)
-                    : 'bg-sidebar border-border text-muted hover:text-primary',
+                    : 'bg-white border-line text-ink-soft hover:text-ink'
                 )}
               >
-                <span className={cn('w-2 h-2 rounded-full', color.dot)} />
-                <span className="max-w-[120px] truncate">{b.name}</span>
+                <span className={cn('w-1.5 h-1.5 rounded-full', color.dot)} />
+                <span className="max-w-[140px] truncate">{b.name}</span>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* ── List ── */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="animate-spin text-gold" size={36} />
+          <Loader2 className="animate-spin text-gold" size={32} />
         </div>
       ) : grouped.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16 px-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mb-4">
-            {tab === 'upcoming' ? <CalendarIcon size={28} className="text-gold/60" /> : <History size={28} className="text-gold/60" />}
+          <div className="w-14 h-14 rounded-2xl bg-[#F7F6F4] flex items-center justify-center mb-4">
+            {tab === 'upcoming' ? <CalendarIcon size={24} className="text-ink-soft" /> : <History size={24} className="text-ink-soft" />}
           </div>
-          <p className="text-muted font-medium">
+          <p className="text-ink font-semibold">
             {tab === 'upcoming' ? 'Nenhum próximo atendimento' : 'Nenhum atendimento no histórico'}
           </p>
-          <p className="text-faint text-sm mt-1">
+          <p className="text-ink-soft text-sm mt-1">
             {search || selectedBarberId !== 'all'
-              ? 'Tente ajustar os filtros de busca.'
+              ? 'Ajuste os filtros de busca.'
               : tab === 'upcoming'
                 ? 'Os próximos agendamentos aparecerão aqui.'
                 : 'O histórico de atendimentos aparecerá aqui.'}
@@ -303,23 +277,23 @@ export default function AppointmentsPage() {
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
             {grouped.map(group => (
               <div key={group.key}>
                 <div className="flex items-center gap-3 mb-3">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-gold capitalize">
+                  <h2 className="text-[13px] font-semibold text-ink capitalize">
                     {dateHeader(group.date)}
                   </h2>
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-[10px] font-mono font-bold text-faint">
+                  <div className="flex-1 h-px bg-line" />
+                  <span className="text-[12px] text-ink-faint">
                     {group.items.length} {group.items.length === 1 ? 'atendimento' : 'atendimentos'}
                   </span>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {group.items.map(app => {
                     const start = parseISO(app.starts_at);
                     const end = parseISO(app.ends_at);
@@ -327,20 +301,20 @@ export default function AppointmentsPage() {
                     return (
                       <motion.div
                         key={app.id}
-                        initial={{ opacity: 0, x: -8 }}
+                        initial={{ opacity: 0, x: -6 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="card p-4 sm:p-5 hover:border-gold/30 hover:shadow-[0_4px_24px_rgba(201,168,76,0.08)] transition-all group"
+                        className="card-hover p-4 sm:p-5 group"
                       >
-                        <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="flex items-start gap-4">
                           {/* Time block */}
-                          <div className="shrink-0 flex flex-col items-center justify-center w-14 sm:w-16 bg-surface border border-border rounded-xl py-2.5">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-faint">
+                          <div className="shrink-0 flex flex-col items-center justify-center w-16 bg-[#F7F6F4] rounded-xl py-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
                               {format(start, 'EEE', { locale: ptBR })}
                             </p>
-                            <p className="text-base sm:text-lg font-mono font-bold text-gold leading-none my-0.5">
+                            <p className="text-base font-bold text-ink leading-none my-0.5">
                               {format(start, 'HH:mm')}
                             </p>
-                            <p className="text-[8px] font-mono text-faint">
+                            <p className="text-[10px] text-ink-faint">
                               {format(end, 'HH:mm')}
                             </p>
                           </div>
@@ -348,56 +322,54 @@ export default function AppointmentsPage() {
                           {/* Main info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <h3 className="text-sm sm:text-base font-bold text-primary truncate">
+                              <h3 className="text-[15px] font-semibold text-ink truncate">
                                 {app.clients?.name ?? 'Cliente removido'}
                               </h3>
-                              <span className={cn(
-                                'shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border',
-                                STATUS_BADGE[app.status],
-                              )}>
+                              <span className={cn('shrink-0', STATUS_BADGE[app.status])}>
                                 {STATUS_LABELS[app.status]}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 text-[11px] text-muted mb-2 flex-wrap">
-                              <span className="flex items-center gap-1 font-mono">
-                                <Scissors size={10} className="text-faint" /> {app.services?.name ?? '—'}
+                            <div className="flex items-center gap-3 text-[13px] text-ink-soft mb-3 flex-wrap">
+                              <span className="flex items-center gap-1.5">
+                                <Scissors size={12} className="text-ink-faint" /> {app.services?.name ?? '—'}
                               </span>
                               {app.clients?.phone && (
-                                <span className="flex items-center gap-1 font-mono text-faint hidden sm:flex">
-                                  <Phone size={10} /> {app.clients.phone}
+                                <span className="hidden sm:flex items-center gap-1.5 text-ink-faint">
+                                  <Phone size={12} /> {app.clients.phone}
                                 </span>
                               )}
                             </div>
 
                             <div className="flex items-center justify-between flex-wrap gap-2">
-                              {/* Barber pill */}
                               <div className={cn(
-                                'flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-bold',
-                                app.barber_id ? cn(color.border, color.bg, color.text) : 'border-border bg-surface text-faint',
+                                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold',
+                                app.barber_id
+                                  ? cn(color.border, color.bg, color.text)
+                                  : 'border-line bg-[#F7F6F4] text-ink-faint'
                               )}>
-                                <span className={cn('w-1.5 h-1.5 rounded-full', app.barber_id ? color.dot : 'bg-faint')} />
+                                <span className={cn('w-1.5 h-1.5 rounded-full', app.barber_id ? color.dot : 'bg-[#A39F9D]')} />
                                 {app.barbers?.name ?? 'Sem barbeiro'}
                               </div>
 
                               <div className="flex items-center gap-3">
-                                <span className="flex items-center gap-1 text-[10px] text-faint font-mono">
-                                  <Clock size={9} /> {Math.round((end.getTime() - start.getTime()) / 60000)} min
+                                <span className="flex items-center gap-1 text-[12px] text-ink-faint">
+                                  <Clock size={11} /> {Math.round((end.getTime() - start.getTime()) / 60000)} min
                                 </span>
-                                <span className="text-sm font-mono font-bold text-gold">
+                                <span className="text-[15px] font-bold text-ink">
                                   R$ {Number(app.services?.price ?? 0).toFixed(2)}
                                 </span>
                               </div>
                             </div>
 
                             {app.notes && (
-                              <p className="text-[11px] text-muted mt-2 line-clamp-2 italic border-l-2 border-gold/20 pl-2">
+                              <p className="text-[12px] text-ink-soft mt-3 border-l-2 border-[#E9DEC9] pl-3">
                                 {app.notes}
                               </p>
                             )}
                           </div>
 
-                          <ChevronRight size={16} className="text-faint shrink-0 hidden sm:block group-hover:text-gold transition-colors" />
+                          <ChevronRight size={16} className="text-ink-faint shrink-0 hidden sm:block" />
                         </div>
                       </motion.div>
                     );

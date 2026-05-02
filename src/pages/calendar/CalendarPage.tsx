@@ -144,7 +144,7 @@ export default function CalendarPage() {
      RENDER
   ═══════════════════════════════════════════════════════ */
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-7 pb-24 lg:pb-8 max-w-[1600px] mx-auto">
 
       <CalendarHeader
         view={view}
@@ -190,7 +190,7 @@ export default function CalendarPage() {
 
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="animate-spin text-gold" size={30} />
+              <Loader2 className="animate-spin text-gold" size={28} />
             </div>
           )}
         </div>
@@ -241,7 +241,7 @@ export default function CalendarPage() {
       <button
         onClick={() => openNewModal()}
         aria-label="Novo agendamento"
-        className="lg:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-2xl bg-gradient-to-br from-gold to-gold-light text-sidebar shadow-[0_6px_24px_rgba(201,168,76,0.4)] flex items-center justify-center active:scale-95 transition-transform"
+        className="lg:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-2xl bg-[#BE9B64] text-white shadow-floating flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus size={22} strokeWidth={2.5} />
       </button>
